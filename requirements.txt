@@ -1,0 +1,7 @@
+facenet_pytorch
+opencv-python
+fastapi
+uvicorn
+pytesseract
+zxing-cpp
+python-multipart
