@@ -5,3 +5,6 @@ uvicorn
 pytesseract
 zxing-cpp
 python-multipart
+numpy
+Pillow
+python-dateutil
