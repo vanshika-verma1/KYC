@@ -8,29 +8,13 @@ import asyncio
 from functools import lru_cache
 import json
 import logging
-import json
-from datetime import datetime
 
-# Configure comprehensive logging
+# Configure production logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('kyc_api.log'),
-        logging.StreamHandler()
-    ]
+    level=logging.WARNING,  # Only warnings and errors in production
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Audit logging for compliance
-audit_logger = logging.getLogger('audit')
-audit_logger.setLevel(logging.INFO)
-audit_handler = logging.FileHandler('kyc_audit.log')
-audit_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - AUDIT - %(message)s'
-))
-audit_logger.addHandler(audit_handler)
-audit_logger.propagate = False
 
 app = FastAPI(
     title="KYC License Validation API",

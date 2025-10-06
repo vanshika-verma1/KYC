@@ -1,5 +1,4 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Request
-from fastapi.responses import FileResponse
 from PIL import Image, ImageOps
 import pytesseract
 import io
@@ -19,8 +18,8 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging for production
+logging.basicConfig(level=logging.WARNING)  # Only warnings and errors in production
 logger = logging.getLogger(__name__)
 
 # Tesseract OCR configuration - Use absolute path to Models folder
@@ -32,24 +31,14 @@ TESSERACT_CMD = os.path.join(MODELS_DIR, "tesseract.exe")
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 # Verify Tesseract exists and log the path
-logger.info(f"Looking for Tesseract at: {TESSERACT_CMD}")
-logger.info(f"Tesseract exists: {os.path.exists(TESSERACT_CMD)}")
-
 if not os.path.exists(TESSERACT_CMD):
     logger.warning(f"Tesseract not found at {TESSERACT_CMD}. Using system default.")
     pytesseract.pytesseract.tesseract_cmd = "tesseract"
-else:
-    logger.info(f"Using Tesseract from: {TESSERACT_CMD}")
 
 router = APIRouter()
 
-# Debug configuration
-DEBUG_MODE = os.getenv("DEBUG_MODE", "true").lower() == "true"
-DEBUG_DIR = os.path.join(os.getcwd(), "debug_images")
-
-# Create debug directory if it doesn't exist
-if DEBUG_MODE:
-    os.makedirs(DEBUG_DIR, exist_ok=True)
+# Debug configuration (disabled for production)
+DEBUG_MODE = False
 
 # Configuration constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -370,61 +359,6 @@ def validate_image_file(file: UploadFile) -> Tuple[bool, str]:
 
     return True, ""
 
-@router.get("/debug_images")
-async def list_debug_images():
-    """List all debug images for troubleshooting OCR"""
-    try:
-        if not DEBUG_MODE:
-            raise HTTPException(status_code=404, detail="Debug mode not enabled")
-
-        debug_files = []
-        if os.path.exists(DEBUG_DIR):
-            for file in os.listdir(DEBUG_DIR):
-                if file.endswith('.jpg') and file.startswith('debug_ocr_'):
-                    file_path = os.path.join(DEBUG_DIR, file)
-                    stat = os.stat(file_path)
-                    debug_files.append({
-                        "filename": file,
-                        "path": file_path,
-                        "size": stat.st_size,
-                        "created": datetime.fromtimestamp(stat.st_ctime).isoformat()
-                    })
-
-        # Sort by creation time (newest first)
-        debug_files.sort(key=lambda x: x['created'], reverse=True)
-
-        return {
-            "debug_mode": DEBUG_MODE,
-            "debug_directory": DEBUG_DIR,
-            "total_images": len(debug_files),
-            "images": debug_files[:10]  # Return latest 10
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/debug_image/{filename}")
-async def get_debug_image(filename: str):
-    """Retrieve a specific debug image"""
-    try:
-        if not DEBUG_MODE:
-            raise HTTPException(status_code=404, detail="Debug mode not enabled")
-
-        if not filename.endswith('.jpg') or not filename.startswith('debug_ocr_'):
-            raise HTTPException(status_code=400, detail="Invalid debug image filename")
-
-        file_path = os.path.join(DEBUG_DIR, filename)
-        if not os.path.exists(file_path):
-            raise HTTPException(status_code=404, detail="Debug image not found")
-
-        return FileResponse(
-            file_path,
-            media_type="image/jpeg",
-            headers={"X-Debug-Image": "true"}
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 def validate_license_images(back_image: UploadFile, front_image: UploadFile) -> Tuple[bool, str]:
     """Validate both license images"""
@@ -585,8 +519,6 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
                 detail=validation_error
             )
 
-        logger.info(f"Processing license validation - Back: {back_image.filename}, Front: {front_image.filename}")
-
         # Caching logic - check if we've processed these exact images before
         back_hash = calculate_image_hash(await back_image.read())
         front_hash = calculate_image_hash(await front_image.read())
@@ -599,7 +531,6 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
         cached_result = get_cached_result(cache_key)
 
         if cached_result:
-            logger.info("Returning cached result")
             # Log audit event for cache hit
             processing_time = time.time() - start_time
             log_audit_event("license_validation_cache_hit", request_info,
@@ -680,8 +611,6 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
 
         # Use your original working OCR logic with minimal enhancement
         try:
-            logger.info("Using enhanced simple OCR processing")
-
             # Your original logic: Use raw image for OCR if clear, otherwise apply minimal preprocessing
             front_pil = front_img_pil
             if blur_score < 0.2:  # Threshold for blurry images
@@ -693,8 +622,6 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
             # Use your original OCR approach but with better config
             ocr_raw_text = pytesseract.image_to_string(front_pil, config='--psm 6 --oem 3')
             ocr_confidence = 0.8 if len(ocr_raw_text.strip()) > 10 else 0.5  # Simple confidence based on text length
-
-            logger.info(f"OCR completed - extracted {len(ocr_raw_text)} characters")
 
         except Exception as e:
             logger.error(f"OCR processing error: {str(e)}")
@@ -800,28 +727,8 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
             0.05 * res_score
         )
 
-        # Save debug image for OCR troubleshooting (simplified)
+        # Debug image saving disabled for production
         debug_image_path = None
-        if DEBUG_MODE:
-            # Create a debug image showing the enhanced image that OCR sees
-            if len(front_cv.shape) > 2:
-                gray = cv2.cvtColor(front_cv, cv2.COLOR_BGR2GRAY)
-            else:
-                gray = front_cv
-
-            enhanced = cv2.equalizeHist(gray)
-
-            # Save debug image in debug directory
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            debug_filename = f"debug_ocr_{timestamp}.jpg"
-            debug_image_path = os.path.join(DEBUG_DIR, debug_filename)
-
-            try:
-                cv2.imwrite(debug_image_path, enhanced)
-                logger.info(f"Debug image saved: {debug_image_path}")
-            except Exception as e:
-                logger.warning(f"Could not save debug image: {e}")
-                debug_image_path = None
 
         # Prepare comprehensive response with advanced OCR metrics
         response = {
@@ -846,12 +753,6 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
                 "front_image_size": f"{front_img_pil.width}x{front_img_pil.height}",
                 "back_image_size": f"{back_img_pil.width}x{back_img_pil.height}",
                 "preprocessing_method": "original_with_grayscale"
-            },
-            "debug_info": {
-                "debug_image_saved": debug_image_path is not None,
-                "debug_image_path": debug_image_path,
-                "ocr_text_length": len(ocr_raw_text),
-                "processing_method": "original_logic_enhanced"
             },
             "raw_barcode_text": barcode_text,
             "processing_info": {
