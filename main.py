@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from validate_license import router as license_router
 from validate_selfie import router as face_router
+from validate_liveness import get_liveness_websocket_router, initialize_liveness_model
 import os
 import time
 import asyncio
@@ -58,6 +59,22 @@ app.add_middleware(
 # -----------------------------
 app.include_router(license_router, prefix="/license", tags=["Validate License"])
 app.include_router(face_router, prefix="/selfie", tags=["Validate Selfie"])
+
+# -----------------------------
+# Include WebSocket for liveness detection
+# -----------------------------
+from validate_liveness import websocket_endpoint
+
+# Add the liveness WebSocket endpoint to the main app
+app.websocket("/ws")(websocket_endpoint)
+
+# -----------------------------
+# Initialize liveness model on startup
+# -----------------------------
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the liveness detection model on startup"""
+    initialize_liveness_model()
 
 # -----------------------------
 # Run app

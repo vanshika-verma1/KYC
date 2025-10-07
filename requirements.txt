@@ -8,3 +8,9 @@ python-multipart
 numpy
 Pillow
 python-dateutil
+mediapipe
+websockets 
+torch 
+torchvision
+insightface
+onnxruntime
