@@ -1,20 +1,3 @@
-"""
-liveness_server.py
-
-Single-file prototype that:
- - Accepts base64 JPEG frames over WebSocket (FastAPI)
- - Detects face + landmarks with MediaPipe FaceMesh
- - Active checks: eye-blink (EAR), head-pose (yaw)
- - Passive PAD / anti-spoofing: runs provided ONNX model on face crop
- - Returns instruction JSON to client
-
-Usage:
-  1) Place your PAD ONNX file (e.g. AntiSpoofing_print-replay_1.5_128.onnx)
-  2) Edit PAD_MODEL_PATH below if needed
-  3) python liveness_server.py
-  4) Open client.html and connect to ws://localhost:8000/ws
-"""
-
 import base64
 import json
 import cv2
@@ -27,7 +10,7 @@ import math
 from typing import Tuple
 
 # ----------------- USER CONFIG -----------------
-PAD_MODEL_PATH = r"C:\KYC\Models\Onnx\AntiSpoofing_print-replay_1.5_128.onnx"
+PAD_MODEL_PATH = r"C:\KYC\KYC_BE\Models\Onnx\AntiSpoofing_print-replay_1.5_128.onnx"
 SPOOF_THRESHOLD = 0.5        # depends on model; tune with validation
 EAR_THRESHOLD = 0.23         # blink threshold (tune)
 EAR_CONSEC_FRAMES = 2        # frames ear must stay below threshold to count blink
