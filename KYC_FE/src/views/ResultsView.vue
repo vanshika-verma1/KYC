@@ -91,16 +91,6 @@
         <p class="text-gray-600 mb-6 text-lg max-w-2xl mx-auto">
           {{ overallResult.message }}
         </p>
-
-        <div class="inline-flex items-center px-6 py-3 rounded-full text-lg font-bold shadow-lg"
-             :class="overallResult.success
-               ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200'
-               : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-200'">
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          {{ overallResult.confidence }} Confidence
-        </div>
       </div>
 
       <!-- Enhanced Step Results -->
@@ -130,16 +120,12 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div class="bg-white/50 rounded-xl p-4 text-center">
-              <p class="font-bold text-2xl text-gray-800 mb-1">{{ licenseResult.authenticity_score }}</p>
+              <p class="font-bold text-2xl text-gray-800 mb-1">{{ licenseResult.authenticity_score*100 }}%</p>
               <p class="text-sm text-gray-600">Authenticity Score</p>
             </div>
             <div class="bg-white/50 rounded-xl p-4 text-center">
               <p class="font-bold text-lg text-gray-800 mb-1">{{ licenseResult.confidence_level }}</p>
               <p class="text-sm text-gray-600">Confidence Level</p>
-            </div>
-            <div class="bg-white/50 rounded-xl p-4 text-center">
-              <p class="font-bold text-2xl text-gray-800 mb-1">{{ licenseResult.ocr_confidence }}</p>
-              <p class="text-sm text-gray-600">OCR Confidence</p>
             </div>
           </div>
 
@@ -188,16 +174,12 @@
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white/50 rounded-xl p-6 text-center">
-              <p class="font-bold text-3xl text-gray-800 mb-2">{{ selfieResult?.similarity_score?.toFixed(1) || 'N/A' }}</p>
+              <p class="font-bold text-3xl text-gray-800 mb-2">{{ selfieResult?.similarity_score?.toFixed(1) || 'N/A' }}%</p>
               <p class="text-sm text-gray-600">Similarity Score</p>
             </div>
             <div class="bg-white/50 rounded-xl p-6 text-center">
               <p class="font-bold text-xl text-gray-800 mb-2">{{ selfieResult?.confidence_level || 'N/A' }}</p>
               <p class="text-sm text-gray-600">Confidence Level</p>
-            </div>
-            <div class="bg-white/50 rounded-xl p-6 text-center">
-              <p class="font-bold text-xl text-gray-800 mb-2">{{ selfieResult?.threshold_used || 'N/A' }}</p>
-              <p class="text-sm text-gray-600">Match Threshold</p>
             </div>
           </div>
         </div>

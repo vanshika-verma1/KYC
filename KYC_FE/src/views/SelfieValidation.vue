@@ -73,21 +73,33 @@
 
             <!-- Camera View -->
             <div v-if="showCamera && !selfieImage" class="space-y-4">
-              <div class="relative bg-black rounded-xl overflow-hidden" style="max-height: 400px;">
+              <div class="relative bg-black rounded-xl overflow-hidden" style="aspect-ratio: 4/3; max-height: 400px;">
                 <video
                   ref="videoElement"
-                  class="w-full h-auto"
+                  class="w-full h-full object-cover"
                   autoplay
                   playsinline
                   muted
                 ></video>
                 <div class="absolute inset-0 border-2 border-purple-400 rounded-xl pointer-events-none"></div>
+
+                <!-- Camera overlay guides -->
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div class="w-48 h-48 border-2 border-white/50 rounded-full"></div>
+                </div>
+
                 <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                  <div class="w-16 h-16 bg-white rounded-full border-4 border-purple-500 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" @click="capturePhoto">
+                  <div class="w-16 h-16 bg-white rounded-full border-4 border-purple-500 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors shadow-lg" @click="capturePhoto">
                     <div class="w-6 h-6 bg-purple-500 rounded-full"></div>
                   </div>
                 </div>
+
+                <!-- Camera ready indicator -->
+                <div class="absolute top-4 right-4">
+                  <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
               </div>
+
               <div class="flex justify-center space-x-3">
                 <button @click="closeCamera" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
                   Cancel
@@ -209,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useKycStore } from '@/stores/kyc'
 
@@ -244,18 +256,48 @@ const stream = ref<MediaStream | null>(null)
 // Camera functions
 const openCamera = async () => {
   try {
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' },
+    // More comprehensive camera constraints
+    const constraints = {
+      video: {
+        facingMode: 'user',
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 }
+      },
       audio: false
-    })
+    }
+
+    const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
     stream.value = mediaStream
+
     if (videoElement.value) {
       videoElement.value.srcObject = mediaStream
+
+      // Try to play video, but don't block on it
+      try {
+        await videoElement.value.play()
+      } catch (playError) {
+        console.warn('Auto-play failed, but video should still work:', playError)
+        // Video might still work even if autoplay fails
+      }
     }
+
     showCamera.value = true
     error.value = ''
   } catch (err) {
-    error.value = 'Camera access denied or not available. Please upload a photo instead.'
+    console.error('Camera error:', err)
+    if (err instanceof Error) {
+      if (err.name === 'NotAllowedError') {
+        error.value = 'Camera access denied. Please allow camera permissions and try again.'
+      } else if (err.name === 'NotFoundError') {
+        error.value = 'No camera found. Please upload a photo instead.'
+      } else if (err.name === 'NotReadableError') {
+        error.value = 'Camera is busy or unavailable. Please close other apps using the camera.'
+      } else {
+        error.value = `Camera error: ${err.message}. Please upload a photo instead.`
+      }
+    } else {
+      error.value = 'Camera access failed. Please upload a photo instead.'
+    }
   }
 }
 
@@ -268,20 +310,36 @@ const closeCamera = () => {
 }
 
 const capturePhoto = () => {
-  if (!videoElement.value || !canvasElement.value) return
+  if (!videoElement.value || !canvasElement.value) {
+    error.value = 'Camera not ready. Please wait a moment and try again.'
+    return
+  }
 
   const video = videoElement.value
   const canvas = canvasElement.value
   const context = canvas.getContext('2d')
 
-  if (!context) return
+  if (!context) {
+    error.value = 'Unable to capture image. Please try again.'
+    return
+  }
 
-  // Set canvas dimensions to video dimensions
-  canvas.width = video.videoWidth
-  canvas.height = video.videoHeight
+  // More lenient check - just ensure video is playing or has data
+  if (video.readyState === video.HAVE_NOTHING) {
+    error.value = 'Camera not ready. Please wait for the preview to load.'
+    return
+  }
+
+  // Use actual video dimensions if available, otherwise use default
+  const captureWidth = video.videoWidth || 1280
+  const captureHeight = video.videoHeight || 720
+
+  // Set canvas dimensions
+  canvas.width = captureWidth
+  canvas.height = captureHeight
 
   // Draw the video frame on the canvas
-  context.drawImage(video, 0, 0)
+  context.drawImage(video, 0, 0, captureWidth, captureHeight)
 
   // Convert to blob and create file
   canvas.toBlob((blob) => {
@@ -293,8 +351,14 @@ const capturePhoto = () => {
       const reader = new FileReader()
       reader.onload = (e) => {
         selfieImage.value = e.target?.result as string
+        showCamera.value = false
+      }
+      reader.onerror = () => {
+        error.value = 'Error processing captured image. Please try again.'
       }
       reader.readAsDataURL(blob)
+    } else {
+      error.value = 'Failed to capture image. Please try again.'
     }
   }, 'image/jpeg', 0.9)
 
@@ -348,28 +412,7 @@ const validateSelfie = async () => {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    // Extract match data from response headers
-    const matchResult = response.headers.get('X-Match-Result') === 'True'
-    const similarityScore = parseFloat(response.headers.get('X-Similarity-Score') || '0')
-    const confidenceLevel = similarityScore >= 0.8 ? 'HIGH' : similarityScore >= 0.7 ? 'MEDIUM' : 'LOW'
-
-    // Create result object similar to backend response format
-    const result = {
-      success: true,
-      match_result: matchResult,
-      similarity_score: similarityScore,
-      confidence_level: confidenceLevel,
-      threshold_used: 0.6, // FACE_MATCH_THRESHOLD from backend
-      face_detection: {
-        image1_face_detected: true, // We assume face was detected since request succeeded
-        image2_face_detected: true
-      },
-      processing_info: {
-        device_used: 'client-side',
-        model: 'Face comparison completed',
-        threshold_method: 'cosine_similarity'
-      }
-    }
+    const result = await response.json()
 
     // Store selfie validation result
     store.setSelfieResult(result)
