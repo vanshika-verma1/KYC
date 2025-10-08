@@ -14,3 +14,4 @@ torch
 torchvision
 insightface
 onnxruntime
+python-dotenv

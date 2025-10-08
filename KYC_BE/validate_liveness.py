@@ -8,9 +8,13 @@ import onnxruntime as ort
 import mediapipe as mp
 import math
 from typing import Tuple
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  
 
 # ----------------- USER CONFIG -----------------
-PAD_MODEL_PATH = r"C:\BharatLogic\KYC\KYC_BE\Models\Onnx\AntiSpoofing_print-replay_1.5_128.onnx"
+PAD_MODEL_PATH = os.getenv("onnx_path")
 SPOOF_THRESHOLD = 0.5        # depends on model; tune with validation
 EAR_THRESHOLD = 0.23         # blink threshold (tune)
 EAR_CONSEC_FRAMES = 2        # frames ear must stay below threshold to count blink

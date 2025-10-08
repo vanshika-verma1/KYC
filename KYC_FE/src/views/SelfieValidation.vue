@@ -1,3 +1,237 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useKycStore } from '@/stores/kyc'
+import {environments} from "@/env.ts"
+
+const router = useRouter()
+const store = useKycStore()
+
+// Computed properties
+const licenseImageUrl = computed(() => {
+  if (store.frontImageFile) {
+    return (window as any).URL?.createObjectURL
+      ? (window as any).URL.createObjectURL(store.frontImageFile)
+      : (window as any).webkitURL?.createObjectURL
+        ? (window as any).webkitURL.createObjectURL(store.frontImageFile)
+        : ''
+  }
+  return ''
+})
+
+// Template refs
+const fileInput = ref<HTMLInputElement>()
+const videoElement = ref<HTMLVideoElement>()
+const canvasElement = ref<HTMLCanvasElement>()
+
+// Reactive state
+const selfieImage = ref<string>('')
+const selfieFile = ref<File | null>(null)
+const showCamera = ref(false)
+const isLoading = ref(false)
+const error = ref('')
+const stream = ref<MediaStream | null>(null)
+
+// Camera functions
+const openCamera = async () => {
+  try {
+    // Simpler camera constraints for better compatibility
+    const constraints = {
+      video: {
+        facingMode: 'user',
+        width: { ideal: 640 },
+        height: { ideal: 480 }
+      },
+      audio: false
+    }
+
+    console.log('Requesting camera access...')
+    const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+    console.log('Camera access granted, stream:', mediaStream)
+    stream.value = mediaStream
+
+    if (videoElement.value) {
+      console.log('Setting video srcObject...')
+      videoElement.value.srcObject = mediaStream
+
+      // Wait a bit for the stream to be ready
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      try {
+        console.log('Starting video playback...')
+        await videoElement.value.play()
+        console.log('Video playing successfully')
+
+        // Additional check to ensure video is displaying
+        videoElement.value.addEventListener('canplay', () => {
+          console.log('Video can play, dimensions:', videoElement.value?.videoWidth, 'x', videoElement.value?.videoHeight)
+        })
+      } catch (playError) {
+        console.warn('Auto-play failed:', playError)
+        // Video might still work even if autoplay fails
+      }
+    }
+
+    showCamera.value = true
+    error.value = ''
+  } catch (err) {
+    console.error('Camera error:', err)
+    if (err instanceof Error) {
+      if (err.name === 'NotAllowedError') {
+        error.value = 'Camera access denied. Please allow camera permissions and try again.'
+      } else if (err.name === 'NotFoundError') {
+        error.value = 'No camera found. Please upload a photo instead.'
+      } else if (err.name === 'NotReadableError') {
+        error.value = 'Camera is busy or unavailable. Please close other apps using the camera.'
+      } else {
+        error.value = `Camera error: ${err.message}. Please upload a photo instead.`
+      }
+    } else {
+      error.value = 'Camera access failed. Please upload a photo instead.'
+    }
+  }
+}
+
+const closeCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop())
+    stream.value = null
+  }
+  showCamera.value = false
+}
+
+const capturePhoto = () => {
+  if (!videoElement.value || !canvasElement.value) {
+    error.value = 'Camera not ready. Please wait a moment and try again.'
+    return
+  }
+
+  const video = videoElement.value
+  const canvas = canvasElement.value
+  const context = canvas.getContext('2d')
+
+  if (!context) {
+    error.value = 'Unable to capture image. Please try again.'
+    return
+  }
+
+  console.log('Attempting to capture photo...')
+  console.log('Video readyState:', video.readyState)
+  console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight)
+
+  // Use video dimensions if available, otherwise use default
+  const captureWidth = video.videoWidth || 640
+  const captureHeight = video.videoHeight || 480
+
+  console.log('Canvas dimensions:', captureWidth, 'x', captureHeight)
+
+  // Set canvas dimensions
+  canvas.width = captureWidth
+  canvas.height = captureHeight
+
+  // Draw the current video frame on the canvas
+  try {
+    context.drawImage(video, 0, 0, captureWidth, captureHeight)
+    console.log('Successfully drew video frame to canvas')
+  } catch (drawError) {
+    console.error('Error drawing video frame:', drawError)
+    error.value = 'Failed to capture image. Please try again.'
+    return
+  }
+
+  // Convert canvas to blob and create file
+  canvas.toBlob((blob) => {
+    if (blob) {
+      console.log('Canvas converted to blob, size:', blob.size)
+      const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      selfieFile.value = file
+
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        selfieImage.value = e.target?.result as string
+        showCamera.value = false
+        console.log('Photo captured and preview created successfully')
+      }
+      reader.onerror = () => {
+        console.error('Error reading captured image blob')
+        error.value = 'Error processing captured image. Please try again.'
+      }
+      reader.readAsDataURL(blob)
+    } else {
+      console.error('Canvas toBlob failed')
+      error.value = 'Failed to capture image. Please try again.'
+    }
+  }, 'image/jpeg', 0.9)
+
+  closeCamera()
+}
+
+// File upload functions
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    selfieFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      selfieImage.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const removeImage = () => {
+  selfieImage.value = ''
+  selfieFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+// API validation function
+const validateSelfie = async () => {
+  if (!selfieFile.value || !store.frontImageFile) return
+
+  isLoading.value = true
+  error.value = ''
+
+  try {
+    const formData = new FormData()
+    formData.append('license', selfieFile.value)  // Selfie image
+    formData.append('selfie', store.frontImageFile)  // License front image
+
+    const response = await fetch(`${environments.baseurl}/selfie/validate_selfie`, {
+      method: 'POST',
+      body: formData
+      // Don't set Content-Type header - let the browser set it with proper boundary for FormData
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Server response:', response.status, errorText)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
+    }
+
+    const result = await response.json()
+
+    // Store selfie validation result
+    store.setSelfieResult(result)
+
+    // Navigate to results page
+    router.push('/results')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'An error occurred during validation'
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="max-w-5xl mx-auto">
     <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
@@ -227,236 +461,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useKycStore } from '@/stores/kyc'
-
-const router = useRouter()
-const store = useKycStore()
-
-// Computed properties
-const licenseImageUrl = computed(() => {
-  if (store.frontImageFile) {
-    return (window as any).URL?.createObjectURL
-      ? (window as any).URL.createObjectURL(store.frontImageFile)
-      : (window as any).webkitURL?.createObjectURL
-        ? (window as any).webkitURL.createObjectURL(store.frontImageFile)
-        : ''
-  }
-  return ''
-})
-
-// Template refs
-const fileInput = ref<HTMLInputElement>()
-const videoElement = ref<HTMLVideoElement>()
-const canvasElement = ref<HTMLCanvasElement>()
-
-// Reactive state
-const selfieImage = ref<string>('')
-const selfieFile = ref<File | null>(null)
-const showCamera = ref(false)
-const isLoading = ref(false)
-const error = ref('')
-const stream = ref<MediaStream | null>(null)
-
-// Camera functions
-const openCamera = async () => {
-  try {
-    // Simpler camera constraints for better compatibility
-    const constraints = {
-      video: {
-        facingMode: 'user',
-        width: { ideal: 640 },
-        height: { ideal: 480 }
-      },
-      audio: false
-    }
-
-    console.log('Requesting camera access...')
-    const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
-    console.log('Camera access granted, stream:', mediaStream)
-    stream.value = mediaStream
-
-    if (videoElement.value) {
-      console.log('Setting video srcObject...')
-      videoElement.value.srcObject = mediaStream
-
-      // Wait a bit for the stream to be ready
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      try {
-        console.log('Starting video playback...')
-        await videoElement.value.play()
-        console.log('Video playing successfully')
-
-        // Additional check to ensure video is displaying
-        videoElement.value.addEventListener('canplay', () => {
-          console.log('Video can play, dimensions:', videoElement.value?.videoWidth, 'x', videoElement.value?.videoHeight)
-        })
-      } catch (playError) {
-        console.warn('Auto-play failed:', playError)
-        // Video might still work even if autoplay fails
-      }
-    }
-
-    showCamera.value = true
-    error.value = ''
-  } catch (err) {
-    console.error('Camera error:', err)
-    if (err instanceof Error) {
-      if (err.name === 'NotAllowedError') {
-        error.value = 'Camera access denied. Please allow camera permissions and try again.'
-      } else if (err.name === 'NotFoundError') {
-        error.value = 'No camera found. Please upload a photo instead.'
-      } else if (err.name === 'NotReadableError') {
-        error.value = 'Camera is busy or unavailable. Please close other apps using the camera.'
-      } else {
-        error.value = `Camera error: ${err.message}. Please upload a photo instead.`
-      }
-    } else {
-      error.value = 'Camera access failed. Please upload a photo instead.'
-    }
-  }
-}
-
-const closeCamera = () => {
-  if (stream.value) {
-    stream.value.getTracks().forEach(track => track.stop())
-    stream.value = null
-  }
-  showCamera.value = false
-}
-
-const capturePhoto = () => {
-  if (!videoElement.value || !canvasElement.value) {
-    error.value = 'Camera not ready. Please wait a moment and try again.'
-    return
-  }
-
-  const video = videoElement.value
-  const canvas = canvasElement.value
-  const context = canvas.getContext('2d')
-
-  if (!context) {
-    error.value = 'Unable to capture image. Please try again.'
-    return
-  }
-
-  console.log('Attempting to capture photo...')
-  console.log('Video readyState:', video.readyState)
-  console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight)
-
-  // Use video dimensions if available, otherwise use default
-  const captureWidth = video.videoWidth || 640
-  const captureHeight = video.videoHeight || 480
-
-  console.log('Canvas dimensions:', captureWidth, 'x', captureHeight)
-
-  // Set canvas dimensions
-  canvas.width = captureWidth
-  canvas.height = captureHeight
-
-  // Draw the current video frame on the canvas
-  try {
-    context.drawImage(video, 0, 0, captureWidth, captureHeight)
-    console.log('Successfully drew video frame to canvas')
-  } catch (drawError) {
-    console.error('Error drawing video frame:', drawError)
-    error.value = 'Failed to capture image. Please try again.'
-    return
-  }
-
-  // Convert canvas to blob and create file
-  canvas.toBlob((blob) => {
-    if (blob) {
-      console.log('Canvas converted to blob, size:', blob.size)
-      const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })
-      selfieFile.value = file
-
-      // Create preview URL
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        selfieImage.value = e.target?.result as string
-        showCamera.value = false
-        console.log('Photo captured and preview created successfully')
-      }
-      reader.onerror = () => {
-        console.error('Error reading captured image blob')
-        error.value = 'Error processing captured image. Please try again.'
-      }
-      reader.readAsDataURL(blob)
-    } else {
-      console.error('Canvas toBlob failed')
-      error.value = 'Failed to capture image. Please try again.'
-    }
-  }, 'image/jpeg', 0.9)
-
-  closeCamera()
-}
-
-// File upload functions
-const triggerFileInput = () => {
-  fileInput.value?.click()
-}
-
-const onFileChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    selfieFile.value = file
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      selfieImage.value = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const removeImage = () => {
-  selfieImage.value = ''
-  selfieFile.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
-// API validation function
-const validateSelfie = async () => {
-  if (!selfieFile.value || !store.frontImageFile) return
-
-  isLoading.value = true
-  error.value = ''
-
-  try {
-    const formData = new FormData()
-    formData.append('license', selfieFile.value)  // Selfie image
-    formData.append('selfie', store.frontImageFile)  // License front image
-
-    const response = await fetch('/selfie/validate_selfie', {
-      method: 'POST',
-      body: formData
-      // Don't set Content-Type header - let the browser set it with proper boundary for FormData
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Server response:', response.status, errorText)
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-    }
-
-    const result = await response.json()
-
-    // Store selfie validation result
-    store.setSelfieResult(result)
-
-    // Navigate to results page
-    router.push('/results')
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'An error occurred during validation'
-  } finally {
-    isLoading.value = false
-  }
-}
-</script>

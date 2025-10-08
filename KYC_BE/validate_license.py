@@ -17,6 +17,10 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  
 
 # Configure logging for production
 logging.basicConfig(level=logging.WARNING)  # Only warnings and errors in production

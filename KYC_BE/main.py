@@ -38,17 +38,9 @@ async def add_performance_headers(request: Request, call_next):
 
     return response
 
-# Health check endpoint
-
-# -----------------------------
-# CORS setup - Production ready
-# -----------------------------
-# In production, replace with actual frontend domains
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:8080").split(",")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
@@ -81,4 +73,4 @@ async def startup_event():
 # -----------------------------
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8125, reload=True)

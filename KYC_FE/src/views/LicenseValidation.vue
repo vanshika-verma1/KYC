@@ -1,3 +1,110 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useKycStore } from '@/stores/kyc'
+import {environments} from "@/env.ts"
+
+const router = useRouter()
+const store = useKycStore()
+
+const frontInput = ref<HTMLInputElement>()
+const backInput = ref<HTMLInputElement>()
+const frontImage = ref<string>('')
+const backImage = ref<string>('')
+const isLoading = ref(false)
+const error = ref('')
+
+const frontFile = ref<File | null>(null)
+const backFile = ref<File | null>(null)
+
+const onFrontImageChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    frontFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      frontImage.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const onBackImageChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    backFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      backImage.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const removeFrontImage = () => {
+  frontImage.value = ''
+  frontFile.value = null
+  if (frontInput.value) {
+    frontInput.value.value = ''
+  }
+}
+
+const removeBackImage = () => {
+  backImage.value = ''
+  backFile.value = null
+  if (backInput.value) {
+    backInput.value.value = ''
+  }
+}
+
+const triggerFrontInput = () => {
+  frontInput.value?.click()
+}
+
+const triggerBackInput = () => {
+  backInput.value?.click()
+}
+
+const validateLicense = async () => {
+  if (!frontFile.value || !backFile.value) return
+
+  isLoading.value = true
+  error.value = ''
+
+  try {
+    const formData = new FormData()
+    formData.append('front_image', frontFile.value)
+    formData.append('back_image', backFile.value)
+
+    const response = await fetch(`${environments.baseurl}/license/validate_license`, {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    // Store license validation result and front image file
+    store.setLicenseResult(result)
+    if (frontFile.value) {
+      store.setFrontImageFile(frontFile.value)
+    }
+
+    // Navigate to next step
+    router.push('/selfie')
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'An error occurred during validation'
+  } finally {
+    isLoading.value = false
+  }
+}
+</script>
+
 <template>
   <div class="max-w-5xl mx-auto">
     <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
@@ -187,109 +294,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useKycStore } from '@/stores/kyc'
-
-const router = useRouter()
-const store = useKycStore()
-
-const frontInput = ref<HTMLInputElement>()
-const backInput = ref<HTMLInputElement>()
-const frontImage = ref<string>('')
-const backImage = ref<string>('')
-const isLoading = ref(false)
-const error = ref('')
-
-const frontFile = ref<File | null>(null)
-const backFile = ref<File | null>(null)
-
-const onFrontImageChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    frontFile.value = file
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      frontImage.value = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const onBackImageChange = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file) {
-    backFile.value = file
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      backImage.value = e.target?.result as string
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const removeFrontImage = () => {
-  frontImage.value = ''
-  frontFile.value = null
-  if (frontInput.value) {
-    frontInput.value.value = ''
-  }
-}
-
-const removeBackImage = () => {
-  backImage.value = ''
-  backFile.value = null
-  if (backInput.value) {
-    backInput.value.value = ''
-  }
-}
-
-const triggerFrontInput = () => {
-  frontInput.value?.click()
-}
-
-const triggerBackInput = () => {
-  backInput.value?.click()
-}
-
-const validateLicense = async () => {
-  if (!frontFile.value || !backFile.value) return
-
-  isLoading.value = true
-  error.value = ''
-
-  try {
-    const formData = new FormData()
-    formData.append('front_image', frontFile.value)
-    formData.append('back_image', backFile.value)
-
-    const response = await fetch('/license/validate_license', {
-      method: 'POST',
-      body: formData
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const result = await response.json()
-
-    // Store license validation result and front image file
-    store.setLicenseResult(result)
-    if (frontFile.value) {
-      store.setFrontImageFile(frontFile.value)
-    }
-
-    // Navigate to next step
-    router.push('/selfie')
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'An error occurred during validation'
-  } finally {
-    isLoading.value = false
-  }
-}
-</script>

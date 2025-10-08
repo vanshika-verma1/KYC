@@ -1,14 +1,14 @@
 import { createApp } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { createPinia } from 'pinia'
-import App from './App.vue'
+import App from '@/App.vue'
 import './style.css'
 
 // Import views
-import LicenseValidation from './views/LicenseValidation.vue'
-import LivenessDetection from './views/LivenessDetection.vue'
-import SelfieValidation from './views/SelfieValidation.vue'
-import ResultsView from './views/ResultsView.vue'
+import LicenseValidation from '@/views/LicenseValidation.vue'
+import LivenessDetection from '@/views/LivenessDetection.vue'
+import SelfieValidation from '@/views/SelfieValidation.vue'
+import ResultsView from '@/views/ResultsView.vue'
 
 const routes = [
   { path: '/', redirect: '/license' },

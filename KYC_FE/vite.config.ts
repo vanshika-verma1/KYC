@@ -10,21 +10,4 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   },
-  server: {
-    port: 8080,
-    proxy: {
-      '/license': {
-        target: 'http://localhost:8000',
-        changeOrigin: true
-      },
-      '/selfie': {
-        target: 'http://localhost:8000',
-        changeOrigin: true
-      },
-      '/ws': {
-        target: 'ws://localhost:8000',
-        ws: true
-      }
-    }
-  }
 })
