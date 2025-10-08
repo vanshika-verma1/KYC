@@ -10,7 +10,7 @@ import math
 from typing import Tuple
 
 # ----------------- USER CONFIG -----------------
-PAD_MODEL_PATH = r"C:\KYC\KYC_BE\Models\Onnx\AntiSpoofing_print-replay_1.5_128.onnx"
+PAD_MODEL_PATH = r"C:\BharatLogic\KYC\KYC_BE\Models\Onnx\AntiSpoofing_print-replay_1.5_128.onnx"
 SPOOF_THRESHOLD = 0.5        # depends on model; tune with validation
 EAR_THRESHOLD = 0.23         # blink threshold (tune)
 EAR_CONSEC_FRAMES = 2        # frames ear must stay below threshold to count blink

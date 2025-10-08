@@ -10,17 +10,16 @@ export const useKycStore = defineStore('kyc', () => {
 
   // Getters
   const isComplete = computed(() => {
-    return licenseResult.value && livenessResult.value && selfieResult.value
+    return licenseResult.value && selfieResult.value
   })
 
   const overallStatus = computed(() => {
     if (!isComplete.value) return 'in_progress'
 
     const licenseSuccess = licenseResult.value.success
-    const livenessSuccess = livenessResult.value.success
     const selfieSuccess = selfieResult.value?.match_result
 
-    if (licenseSuccess && livenessSuccess && selfieSuccess) return 'success'
+    if (licenseSuccess && selfieSuccess) return 'success'
     return 'failed'
   })
 
