@@ -400,16 +400,19 @@ const validateSelfie = async () => {
 
   try {
     const formData = new FormData()
-    formData.append('file1', selfieFile.value)  // Selfie image
-    formData.append('file2', store.frontImageFile)  // License front image
+    formData.append('license', selfieFile.value)  // Selfie image
+    formData.append('selfie', store.frontImageFile)  // License front image
 
     const response = await fetch('/selfie/validate_selfie', {
       method: 'POST',
       body: formData
+      // Don't set Content-Type header - let the browser set it with proper boundary for FormData
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      const errorText = await response.text()
+      console.error('Server response:', response.status, errorText)
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
     }
 
     const result = await response.json()
