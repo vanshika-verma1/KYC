@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-6xl mx-auto">
+  <div class="max-w-5xl mx-auto">
     <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
       <div class="text-center mb-8">
         <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -11,264 +11,183 @@
           Selfie Validation
         </h2>
         <p class="text-gray-600 text-lg">
-          Please take a clear photo of your face. We'll compare it with your ID photo to verify your identity.
+          Please take a clear selfie or upload a photo of yourself for identity verification.
         </p>
       </div>
 
-      <!-- License Image Status -->
-      <div class="mb-4 flex items-center space-x-4">
-        <div class="flex items-center space-x-2">
-          <div
-            class="w-3 h-3 rounded-full"
-            :class="store.frontImageFile ? 'bg-green-400' : 'bg-red-400'"
-          ></div>
-          <span class="text-sm font-medium" :class="store.frontImageFile ? 'text-green-600' : 'text-red-600'">
-            {{ store.frontImageFile ? 'License image ready' : 'License image missing' }}
-          </span>
+      <!-- Image Upload/Capture Section -->
+      <div class="max-w-2xl mx-auto mb-8">
+        <div class="text-center mb-6">
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">Your Photo</h3>
+          <p class="text-sm text-gray-500">Upload a photo or take one using your camera</p>
         </div>
 
-        <div v-if="store.frontImageFile" class="text-sm text-gray-500">
-          {{ (store.frontImageFile.size / 1024 / 1024).toFixed(1) }}MB • {{ store.frontImageFile.name }}
+        <div class="relative group">
+          <div :class="[
+            'border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300',
+            'hover:scale-[1.02] hover:shadow-lg',
+            selfieImage ? 'border-green-300 bg-green-50/50' : 'border-gray-300 hover:border-purple-400 bg-gray-50/50'
+          ]">
+
+            <!-- Camera Option -->
+            <div v-if="!selfieImage && !showCamera" class="space-y-6">
+              <div class="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg class="w-10 h-10 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  @click="openCamera"
+                  :disabled="isLoading"
+                  class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Take Photo
+                </button>
+
+                <button
+                  @click="triggerFileInput"
+                  :disabled="isLoading"
+                  class="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                >
+                  <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Upload Photo
+                </button>
+              </div>
+
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                @change="onFileChange"
+                class="hidden"
+              />
+            </div>
+
+            <!-- Camera View -->
+            <div v-if="showCamera && !selfieImage" class="space-y-4">
+              <div class="relative bg-black rounded-xl overflow-hidden" style="max-height: 400px;">
+                <video
+                  ref="videoElement"
+                  class="w-full h-auto"
+                  autoplay
+                  playsinline
+                  muted
+                ></video>
+                <div class="absolute inset-0 border-2 border-purple-400 rounded-xl pointer-events-none"></div>
+                <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                  <div class="w-16 h-16 bg-white rounded-full border-4 border-purple-500 flex items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors" @click="capturePhoto">
+                    <div class="w-6 h-6 bg-purple-500 rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex justify-center space-x-3">
+                <button @click="closeCamera" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- Captured/Uploaded Image -->
+            <div v-if="selfieImage" class="space-y-4">
+              <div class="relative">
+                <img :src="selfieImage" alt="Selfie" class="w-full max-h-64 object-contain rounded-xl shadow-md" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl"></div>
+                <div class="absolute top-2 right-2">
+                  <div class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    ✓ Ready
+                  </div>
+                </div>
+              </div>
+              <div class="flex justify-center space-x-3">
+                <button
+                  v-if="!showCamera"
+                  @click="openCamera"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors"
+                >
+                  Retake Photo
+                </button>
+                <button @click="triggerFileInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                  Change Photo
+                </button>
+                <button @click="removeImage" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-lg transition-colors">
+                  Remove
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Image Preview/Camera Section -->
-      <div class="mb-8">
-        <!-- Image Preview Mode -->
-        <div v-if="capturedImage || uploadedImage" class="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl overflow-hidden aspect-video shadow-2xl">
-          <img
-            :src="capturedImage || uploadedImage"
-            alt="Selfie preview"
-            class="w-full h-full object-cover"
-          />
-          <!-- Image selected overlay -->
-          <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="text-center text-white">
-              <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p class="text-xl font-semibold">{{ capturedImage ? 'Photo Captured!' : 'Image Uploaded!' }}</p>
-              <p class="text-sm opacity-75">Ready for validation</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Camera Mode -->
-        <div v-else class="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl overflow-hidden aspect-video shadow-2xl">
-          <video
-            v-if="isStreaming"
-            ref="videoElement"
-            autoplay
-            playsinline
-            muted
-            class="w-full h-full object-cover"
-          ></video>
-
-          <!-- Camera overlay when not streaming -->
-          <div v-if="!isStreaming" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-            <div class="text-center text-white">
-              <div class="w-20 h-20 bg-white bg-opacity-20 rounded-full mx-auto mb-6 flex items-center justify-center">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <p class="text-xl font-semibold mb-2">Choose how to provide your selfie</p>
-              <p class="text-sm opacity-75">Upload an existing photo or take a new one</p>
-            </div>
-          </div>
-
-          <!-- Camera streaming overlay -->
-          <div v-if="isStreaming && !capturedImage" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
-            <div class="text-center text-white">
-              <div class="animate-pulse w-20 h-20 bg-white bg-opacity-20 rounded-full mx-auto mb-6 flex items-center justify-center">
-                <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <p class="text-xl font-semibold mb-2">Position your face in the center</p>
-              <p class="text-sm opacity-75">Ensure good lighting and look directly at the camera</p>
-            </div>
-          </div>
-
-          <!-- Enhanced face detection box -->
-          <div
-            v-if="faceBox && isStreaming && !capturedImage"
-            class="absolute border-2 border-green-400 rounded-lg shadow-lg shadow-green-400/30 animate-pulse"
-            :style="{
-              left: `${faceBox.x}px`,
-              top: `${faceBox.y}px`,
-              width: `${faceBox.width}px`,
-              height: `${faceBox.height}px`
-            }"
-          ></div>
-        </div>
-      </div>
-
-      <!-- Enhanced Controls -->
-      <div class="mb-8">
-        <!-- Initial Options - Upload or Capture -->
-        <div v-if="!capturedImage && !uploadedImage" class="flex flex-wrap justify-center gap-4 mb-8">
-          <!-- Upload Option -->
-          <div class="relative">
-            <input
-              ref="selfieInput"
-              type="file"
-              accept="image/*"
-              @change="onSelfieImageChange"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            <button class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105">
-              <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      <!-- License Reference -->
+      <div v-if="store.frontImageFile" class="max-w-2xl mx-auto mb-8">
+        <div class="bg-blue-50/80 backdrop-blur-sm border border-blue-200 rounded-2xl p-6">
+          <div class="flex items-center space-x-3 mb-4">
+            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              Upload Image
-            </button>
+            </div>
+            <div>
+              <h3 class="font-semibold text-gray-900">ID Document Reference</h3>
+              <p class="text-sm text-gray-600">We'll compare your selfie with your uploaded ID</p>
+            </div>
           </div>
-
-          <button
-            @click="startCamera"
-            class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-          >
-            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-            Take Photo
-          </button>
+          <div class="text-center">
+            <img :src="licenseImageUrl" alt="License front" class="w-full max-h-32 object-contain rounded-lg shadow-sm mx-auto" />
+          </div>
         </div>
+      </div>
 
-        <!-- Camera Controls -->
-        <div v-if="isStreaming && !capturedImage && !uploadedImage" class="flex justify-center">
-          <button
-            @click="capturePhoto"
-            :disabled="!faceDetected"
-            :class="[
-              'font-semibold py-3 px-8 rounded-xl shadow-lg transition-all transform',
-              faceDetected && !isValidating
-                ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white hover:shadow-xl hover:scale-105'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            ]"
-          >
-            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+      <!-- Validate Button -->
+      <div class="text-center pt-6">
+        <button
+          @click="validateSelfie"
+          :disabled="!selfieImage || !store.frontImageFile || isLoading"
+          :class="[
+            'relative px-12 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform',
+            'disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none',
+            selfieImage && store.frontImageFile && !isLoading
+              ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
+              : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-md'
+          ]"
+        >
+          <span v-if="isLoading" class="flex items-center justify-center">
+            <svg class="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ faceDetected ? 'Capture Photo' : 'Detecting Face...' }}
-          </button>
-        </div>
-
-        <!-- Validation Button - appears after image is selected -->
-        <div v-if="(capturedImage || uploadedImage) && !isValidating" class="text-center">
-          <button
-            @click="validateSelfie"
-            class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-semibold py-4 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          >
-            <svg class="w-6 h-6 mr-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            Validating Selfie...
+          </span>
+          <span v-else class="flex items-center justify-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Validate & Continue
-          </button>
+          </span>
+        </button>
 
-          <!-- Image info -->
-          <div class="mt-3 text-sm text-gray-500">
-            <span v-if="capturedImage">📸 Camera photo ready for validation</span>
-            <span v-if="uploadedImage">📁 Uploaded image ready for validation</span>
+        <!-- Progress indicator -->
+        <div class="flex justify-center space-x-4 mt-4">
+          <div class="flex items-center space-x-2 text-sm">
+            <div :class="selfieImage ? 'w-3 h-3 bg-green-500 rounded-full' : 'w-3 h-3 bg-gray-300 rounded-full'"></div>
+            <span :class="selfieImage ? 'text-green-600 font-medium' : 'text-gray-500'">Selfie Photo</span>
           </div>
-
-          <!-- Retake option -->
-          <div class="mt-4 space-x-4">
-            <button
-              v-if="capturedImage"
-              @click="retakePhoto"
-              class="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
-            >
-              Or retake photo
-            </button>
-            <button
-              v-if="uploadedImage"
-              @click="clearUploadedImage"
-              class="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
-            >
-              Or choose different image
-            </button>
-          </div>
-        </div>
-
-        <!-- Stop Camera button -->
-        <div v-if="isStreaming && !capturedImage && !uploadedImage" class="text-center mt-4">
-          <button
-            @click="stopCamera"
-            class="text-sm text-gray-500 hover:text-gray-700 underline"
-          >
-            Cancel & Close Camera
-          </button>
-        </div>
-      </div>
-
-      <!-- Enhanced Loading State -->
-      <div v-if="isValidating" class="text-center py-12">
-        <div class="relative mx-auto mb-8">
-          <div class="animate-spin w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full"></div>
-          <div class="absolute inset-0 flex items-center justify-center">
-            <svg class="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-        </div>
-        <p class="text-xl font-semibold text-gray-700 mb-2">Comparing faces...</p>
-        <p class="text-sm text-gray-500 mb-4">Analyzing facial features and verifying identity</p>
-
-        <!-- Progress steps -->
-        <div class="flex justify-center items-center space-x-4 text-sm text-gray-600">
-          <div class="flex items-center space-x-2">
-            <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
-            <span>Face Detection</span>
-          </div>
-          <div class="w-6 h-px bg-purple-300"></div>
-          <div class="flex items-center space-x-2">
-            <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-            <span>Feature Extraction</span>
-          </div>
-          <div class="w-6 h-px bg-purple-300"></div>
-          <div class="flex items-center space-x-2">
-            <div class="w-2 h-2 bg-purple-300 rounded-full"></div>
-            <span>Comparison</span>
-          </div>
-        </div>
-
-        <div class="mt-6 flex justify-center space-x-1">
-          <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse"></div>
-          <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
-          <div class="w-2 h-2 bg-purple-400 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
-        </div>
-      </div>
-
-
-      <!-- License Image Missing Error -->
-      <div v-if="!store.frontImageFile && !isStreaming && !validationResult" class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div class="flex">
-          <svg class="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-          </svg>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-yellow-800">License Image Required</h3>
-            <p class="mt-1 text-sm text-yellow-700">
-              Please complete Step 1 (License Validation) first to upload your ID images before proceeding to selfie validation.
-            </p>
-            <div class="mt-3">
-              <button
-                @click="$router.push('/license')"
-                class="text-sm font-medium text-yellow-800 hover:text-yellow-900"
-              >
-                Go to License Validation →
-              </button>
-            </div>
+          <div class="flex items-center space-x-2 text-sm">
+            <div :class="store.frontImageFile ? 'w-3 h-3 bg-green-500 rounded-full' : 'w-3 h-3 bg-gray-300 rounded-full'"></div>
+            <span :class="store.frontImageFile ? 'text-green-600 font-medium' : 'text-gray-500'">ID Document</span>
           </div>
         </div>
       </div>
 
-      <!-- Enhanced Error Message -->
+      <!-- Error Message -->
       <div v-if="error" class="mt-8 p-6 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-2xl">
         <div class="flex items-start">
           <div class="flex-shrink-0">
@@ -276,433 +195,191 @@
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
             </svg>
           </div>
-          <div class="ml-3 flex-1">
+          <div class="ml-3">
             <h3 class="text-sm font-semibold text-red-800">Validation Error</h3>
             <p class="mt-1 text-sm text-red-700">{{ error }}</p>
-
-            <!-- Helpful suggestions based on error type -->
-            <div v-if="error.includes('license')" class="mt-3 p-3 bg-red-100/50 rounded-lg">
-              <p class="text-sm font-medium text-red-800 mb-1">To fix this issue:</p>
-              <ol class="text-sm text-red-700 list-decimal list-inside space-y-1">
-                <li>Go back to License Validation step</li>
-                <li>Upload a clear photo of your ID document</li>
-                <li>Ensure all corners of the document are visible</li>
-                <li>Try again once the license validation is complete</li>
-              </ol>
-            </div>
-
-            <div v-if="error.includes('face') || error.includes('No face detected')" class="mt-3 p-3 bg-red-100/50 rounded-lg">
-              <p class="text-sm font-medium text-red-800 mb-1">To fix this issue:</p>
-              <ol class="text-sm text-red-700 list-decimal list-inside space-y-1">
-                <li>Ensure your face is clearly visible in the photo</li>
-                <li>Remove sunglasses, hats, or other face coverings</li>
-                <li>Ensure good lighting on your face</li>
-                <li>Look directly at the camera</li>
-                <li>Try taking the photo again</li>
-              </ol>
-            </div>
-
-            <div v-if="error.includes('network') || error.includes('fetch')" class="mt-3 p-3 bg-red-100/50 rounded-lg">
-              <p class="text-sm font-medium text-red-800 mb-1">Network Error:</p>
-              <ol class="text-sm text-red-700 list-decimal list-inside space-y-1">
-                <li>Check your internet connection</li>
-                <li>Ensure the backend server is running on port 8000</li>
-                <li>Try again in a few moments</li>
-              </ol>
-            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Retry button for failed validations -->
-    <div v-if="error && (capturedImage || uploadedImage)" class="mt-4">
-      <button
-        @click="retryValidation"
-        class="text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg transition-colors"
-      >
-        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        Try Again
-      </button>
+      <!-- Hidden canvas for camera capture -->
+      <canvas ref="canvasElement" class="hidden"></canvas>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useKycStore } from '@/stores/kyc'
 
 const router = useRouter()
 const store = useKycStore()
 
+// Computed properties
+const licenseImageUrl = computed(() => {
+  if (store.frontImageFile) {
+    return (window as any).URL?.createObjectURL
+      ? (window as any).URL.createObjectURL(store.frontImageFile)
+      : (window as any).webkitURL?.createObjectURL
+        ? (window as any).webkitURL.createObjectURL(store.frontImageFile)
+        : ''
+  }
+  return ''
+})
+
+// Template refs
+const fileInput = ref<HTMLInputElement>()
 const videoElement = ref<HTMLVideoElement>()
-const selfieInput = ref<HTMLInputElement>()
-const isStreaming = ref(false)
-const capturedImage = ref<string>('')
-const uploadedImage = ref<string>('')
-const faceDetected = ref(false)
-const faceBox = ref<{x: number, y: number, width: number, height: number} | null>(null)
-const isValidating = ref(false)
-const validationResult = ref<any>(null)
-const comparisonImage = ref<string>('')
+const canvasElement = ref<HTMLCanvasElement>()
+
+// Reactive state
+const selfieImage = ref<string>('')
+const selfieFile = ref<File | null>(null)
+const showCamera = ref(false)
+const isLoading = ref(false)
 const error = ref('')
+const stream = ref<MediaStream | null>(null)
 
-let stream: MediaStream | null = null
-let faceDetectionInterval: number | null = null
-
-const licenseImage = computed(() => {
-  const frontImageFile = store.frontImageFile
-  if (!frontImageFile) {
-    console.warn('No front image file found in store')
-    return ''
-  }
-
+// Camera functions
+const openCamera = async () => {
   try {
-    // Create object URL for the stored file
-    const objectUrl = URL.createObjectURL(frontImageFile)
-    console.log('Created license image URL from stored file')
-    return objectUrl
-  } catch (error) {
-    console.error('Error creating object URL for license image:', error)
-    return ''
-  }
-})
-
-onMounted(() => {
-  // Camera no longer auto-starts - user chooses upload or camera
-})
-
-onUnmounted(() => {
-  stopCamera()
-  // Clean up object URL to prevent memory leaks
-  if (licenseImage.value) {
-    URL.revokeObjectURL(licenseImage.value)
-  }
-})
-
-const startCamera = async () => {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        facingMode: 'user'
-      }
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user' },
+      audio: false
     })
-
+    stream.value = mediaStream
     if (videoElement.value) {
-      videoElement.value.srcObject = stream
-      isStreaming.value = true
-      startFaceDetection()
+      videoElement.value.srcObject = mediaStream
     }
+    showCamera.value = true
+    error.value = ''
   } catch (err) {
-    error.value = 'Failed to access camera. Please ensure camera permissions are granted.'
+    error.value = 'Camera access denied or not available. Please upload a photo instead.'
   }
 }
 
-const stopCamera = () => {
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop())
-    stream = null
+const closeCamera = () => {
+  if (stream.value) {
+    stream.value.getTracks().forEach(track => track.stop())
+    stream.value = null
   }
-
-  if (faceDetectionInterval) {
-    clearInterval(faceDetectionInterval)
-    faceDetectionInterval = null
-  }
-
-  isStreaming.value = false
+  showCamera.value = false
 }
 
-const startFaceDetection = () => {
-  if (!videoElement.value) return
-
-  faceDetectionInterval = window.setInterval(() => {
-    detectFace()
-  }, 100)
-}
-
-const detectFace = () => {
-  if (!videoElement.value) return
+const capturePhoto = () => {
+  if (!videoElement.value || !canvasElement.value) return
 
   const video = videoElement.value
+  const canvas = canvasElement.value
+  const context = canvas.getContext('2d')
 
-  // Check if video is ready and has dimensions
-  if (video.videoWidth === 0 || video.videoHeight === 0) {
-    faceDetected.value = false
-    return
-  }
+  if (!context) return
 
-  // Simple face detection using canvas and basic image processing
-  // Look for areas with higher contrast (likely to be faces)
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-
-  if (!ctx) return
-
+  // Set canvas dimensions to video dimensions
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
 
-  ctx.drawImage(video, 0, 0)
+  // Draw the video frame on the canvas
+  context.drawImage(video, 0, 0)
 
-  // Get image data for analysis
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-  const data = imageData.data
+  // Convert to blob and create file
+  canvas.toBlob((blob) => {
+    if (blob) {
+      const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })
+      selfieFile.value = file
 
-  // Simple face detection by finding areas with skin-like colors and contrast
-  const centerX = canvas.width / 2
-  const centerY = canvas.height / 2
-
-  // Assume face is in the central area for now (you can implement real face detection later)
-  const boxSize = Math.min(canvas.width, canvas.height) * 0.4
-
-  // Check if there's enough contrast in the center area (indicating a face might be there)
-  let hasContrast = false
-  const sampleSize = 50
-
-  for (let x = centerX - sampleSize; x < centerX + sampleSize; x += 10) {
-    for (let y = centerY - sampleSize; y < centerY + sampleSize; y += 10) {
-      if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
-        const i = (y * canvas.width + x) * 4
-        const r = data[i]
-        const g = data[i + 1]
-        const b = data[i + 2]
-
-        // Simple skin detection (basic heuristic)
-        if (r > 60 && g > 40 && b > 20 && r > g && r > b) {
-          hasContrast = true
-          break
-        }
+      // Create preview URL
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        selfieImage.value = e.target?.result as string
       }
+      reader.readAsDataURL(blob)
     }
-    if (hasContrast) break
-  }
+  }, 'image/jpeg', 0.9)
 
-  if (hasContrast) {
-    faceBox.value = {
-      x: centerX - boxSize / 2,
-      y: centerY - boxSize / 2,
-      width: boxSize,
-      height: boxSize
+  closeCamera()
+}
+
+// File upload functions
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    selfieFile.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      selfieImage.value = e.target?.result as string
     }
-    faceDetected.value = true
-  } else {
-    faceDetected.value = false
-    faceBox.value = null
+    reader.readAsDataURL(file)
   }
 }
 
-const capturePhoto = async () => {
-   if (!videoElement.value || !faceDetected.value) {
-     error.value = 'Please wait for face detection before capturing'
-     return
-   }
+const removeImage = () => {
+  selfieImage.value = ''
+  selfieFile.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
 
-   try {
-     const video = videoElement.value
-     const canvas = document.createElement('canvas')
-     const ctx = canvas.getContext('2d')
-
-     if (!ctx) {
-       error.value = 'Unable to capture image - canvas not supported'
-       return
-     }
-
-     // Set canvas dimensions to match video
-     canvas.width = video.videoWidth
-     canvas.height = video.videoHeight
-
-     // Draw the current video frame
-     ctx.drawImage(video, 0, 0)
-
-     // Convert to base64 with good quality
-     const imageData = canvas.toDataURL('image/jpeg', 0.9)
-
-     if (imageData && imageData.length > 100) { // Basic check for valid image
-       capturedImage.value = imageData
-
-       // Stop camera after capturing
-       stopCamera()
-
-       // Clear uploaded image if exists
-       uploadedImage.value = ''
-
-       // Clear any previous errors
-       error.value = ''
-
-       console.log('Photo captured successfully:', {
-         width: video.videoWidth,
-         height: video.videoHeight,
-         size: imageData.length
-       })
-     } else {
-       error.value = 'Failed to capture image - please try again'
-     }
-   } catch (err) {
-     console.error('Error capturing photo:', err)
-     error.value = 'Failed to capture photo. Please try again.'
-   }
- }
-
-const retakePhoto = () => {
-   capturedImage.value = ''
-   uploadedImage.value = ''
-   validationResult.value = null
-   error.value = ''
- }
-
-const clearUploadedImage = () => {
-   uploadedImage.value = ''
-   validationResult.value = null
-   error.value = ''
- }
-
-
+// API validation function
 const validateSelfie = async () => {
-  // Use either captured or uploaded image
-  const imageToValidate = capturedImage.value || uploadedImage.value
-  if (!imageToValidate) {
-    error.value = 'Please capture or upload a selfie image first'
-    return
-  }
+  if (!selfieFile.value || !store.frontImageFile) return
 
-  // Validate license image is available
-  if (!store.frontImageFile) {
-    error.value = 'License image not available. Please complete license validation first.'
-    return
-  }
-
-  isValidating.value = true
+  isLoading.value = true
   error.value = ''
 
   try {
-    // Convert base64 to blob for selfie
-    const selfieResponse = await fetch(imageToValidate)
-    const selfieBlob = await selfieResponse.blob()
-
     const formData = new FormData()
-    // Backend expects file1 as license image and file2 as selfie
-    formData.append('file1', store.frontImageFile, 'license.jpg')
-    formData.append('file2', selfieBlob, 'selfie.jpg')
+    formData.append('file1', selfieFile.value)  // Selfie image
+    formData.append('file2', store.frontImageFile)  // License front image
 
-    console.log('Sending validation request with files:', {
-      licenseSize: store.frontImageFile.size,
-      selfieSize: selfieBlob.size
-    })
-
-    // Use the correct API endpoint based on backend routing
-    const validationResponse = await fetch('http://localhost:8000/selfie/validate_selfie', {
+    const response = await fetch('/selfie/validate_selfie', {
       method: 'POST',
       body: formData
     })
 
-    if (!validationResponse.ok) {
-      const errorText = await validationResponse.text().catch(() => 'Unknown error')
-      throw new Error(`Validation failed: ${validationResponse.status} - ${errorText}`)
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    // Get match result from response headers
-    const matchResult = validationResponse.headers.get('X-Match-Result') === 'true'
-    const similarityScore = parseFloat(validationResponse.headers.get('X-Similarity-Score') || '0')
+    // Extract match data from response headers
+    const matchResult = response.headers.get('X-Match-Result') === 'True'
+    const similarityScore = parseFloat(response.headers.get('X-Similarity-Score') || '0')
+    const confidenceLevel = similarityScore >= 0.8 ? 'HIGH' : similarityScore >= 0.7 ? 'MEDIUM' : 'LOW'
 
-    if (isNaN(similarityScore)) {
-      throw new Error('Invalid response from server - no similarity score received')
-    }
-
-    console.log('Validation successful:', { matchResult, similarityScore })
-
-    // Create a comprehensive result object
+    // Create result object similar to backend response format
     const result = {
+      success: true,
       match_result: matchResult,
       similarity_score: similarityScore,
-      confidence_level: similarityScore >= 80 ? 'HIGH' : similarityScore >= 60 ? 'MEDIUM' : 'LOW',
-      threshold_used: 60,
-      image_quality: {
-        image1: { brightness: 0, contrast: 0, sharpness: 0, resolution: 'N/A', is_good_quality: true },
-        image2: { brightness: 0, contrast: 0, sharpness: 0, resolution: 'N/A', is_good_quality: true }
-      },
+      confidence_level: confidenceLevel,
+      threshold_used: 0.6, // FACE_MATCH_THRESHOLD from backend
       face_detection: {
-        image1_face_detected: true,
+        image1_face_detected: true, // We assume face was detected since request succeeded
         image2_face_detected: true
       },
       processing_info: {
-        device_used: 'web_browser',
-        model: 'FaceNet',
+        device_used: 'client-side',
+        model: 'Face comparison completed',
         threshold_method: 'cosine_similarity'
       }
     }
 
-    validationResult.value = result
-
-    // Store selfie result in the store
+    // Store selfie validation result
     store.setSelfieResult(result)
 
     // Navigate to results page
     router.push('/results')
-
   } catch (err) {
-    console.error('Selfie validation error:', err)
     error.value = err instanceof Error ? err.message : 'An error occurred during validation'
-    isValidating.value = false
+  } finally {
+    isLoading.value = false
   }
-}
-
-// License image is now handled directly from store
-
-const onSelfieImageChange = (event: Event) => {
-   const target = event.target as HTMLInputElement
-   const file = target.files?.[0]
-   if (file) {
-     // Validate file type
-     if (!file.type.startsWith('image/')) {
-       error.value = 'Please select a valid image file'
-       return
-     }
-
-     // Validate file size (max 10MB)
-     if (file.size > 10 * 1024 * 1024) {
-       error.value = 'Image file size must be less than 10MB'
-       return
-     }
-
-     const reader = new FileReader()
-     reader.onload = (e) => {
-       const result = e.target?.result as string
-       if (result) {
-         uploadedImage.value = result
-         // Stop camera if it's running when user uploads an image
-         if (isStreaming.value) {
-           stopCamera()
-         }
-         // Clear captured image if exists
-         capturedImage.value = ''
-         // Clear any previous errors
-         error.value = ''
-         console.log('Image uploaded successfully:', {
-           name: file.name,
-           size: file.size,
-           type: file.type
-         })
-       }
-     }
-     reader.onerror = () => {
-       error.value = 'Failed to read the uploaded image file'
-     }
-     reader.readAsDataURL(file)
-   }
- }
-
-const retryValidation = () => {
-  error.value = ''
-  isValidating.value = false
-  validationResult.value = null
-  // The existing image will still be there, so the user can try again
-}
-
-const proceedToResults = () => {
-  router.push('/results')
 }
 </script>
