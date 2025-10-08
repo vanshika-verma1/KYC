@@ -38,8 +38,8 @@
                 </svg>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
+              <div class="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                <!-- <button
                   @click="openCamera"
                   :disabled="isLoading"
                   class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
@@ -48,7 +48,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   Take Photo
-                </button>
+                </button> -->
 
                 <button
                   @click="triggerFileInput"
@@ -73,15 +73,15 @@
 
             <!-- Camera View -->
             <div v-if="showCamera && !selfieImage" class="space-y-4">
-              <div class="relative bg-black rounded-xl overflow-hidden" style="aspect-ratio: 4/3; max-height: 400px;">
+              <div class="relative bg-black rounded-xl overflow-hidden" style="width: 100%; max-width: 640px; height: 480px; margin: 0 auto;">
                 <video
                   ref="videoElement"
-                  class="w-full h-full object-cover"
+                  class="absolute inset-0 w-full h-full object-cover"
                   autoplay
                   playsinline
                   muted
+                  style="transform: scaleX(-1);" <!-- Mirror the camera for selfie -->
                 ></video>
-                <div class="absolute inset-0 border-2 border-purple-400 rounded-xl pointer-events-none"></div>
 
                 <!-- Camera overlay guides -->
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -97,6 +97,14 @@
                 <!-- Camera ready indicator -->
                 <div class="absolute top-4 right-4">
                   <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+
+                <!-- Loading overlay -->
+                <div v-if="!videoElement?.srcObject" class="absolute inset-0 flex items-center justify-center bg-gray-900">
+                  <div class="text-white text-center">
+                    <div class="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full mx-auto mb-2"></div>
+                    <p class="text-sm">Starting camera...</p>
+                  </div>
                 </div>
               </div>
 
@@ -256,27 +264,39 @@ const stream = ref<MediaStream | null>(null)
 // Camera functions
 const openCamera = async () => {
   try {
-    // More comprehensive camera constraints
+    // Simpler camera constraints for better compatibility
     const constraints = {
       video: {
         facingMode: 'user',
-        width: { ideal: 1280, max: 1920 },
-        height: { ideal: 720, max: 1080 }
+        width: { ideal: 640 },
+        height: { ideal: 480 }
       },
       audio: false
     }
 
+    console.log('Requesting camera access...')
     const mediaStream = await navigator.mediaDevices.getUserMedia(constraints)
+    console.log('Camera access granted, stream:', mediaStream)
     stream.value = mediaStream
 
     if (videoElement.value) {
+      console.log('Setting video srcObject...')
       videoElement.value.srcObject = mediaStream
 
-      // Try to play video, but don't block on it
+      // Wait a bit for the stream to be ready
+      await new Promise(resolve => setTimeout(resolve, 100))
+
       try {
+        console.log('Starting video playback...')
         await videoElement.value.play()
+        console.log('Video playing successfully')
+
+        // Additional check to ensure video is displaying
+        videoElement.value.addEventListener('canplay', () => {
+          console.log('Video can play, dimensions:', videoElement.value?.videoWidth, 'x', videoElement.value?.videoHeight)
+        })
       } catch (playError) {
-        console.warn('Auto-play failed, but video should still work:', playError)
+        console.warn('Auto-play failed:', playError)
         // Video might still work even if autoplay fails
       }
     }
@@ -324,26 +344,34 @@ const capturePhoto = () => {
     return
   }
 
-  // More lenient check - just ensure video is playing or has data
-  if (video.readyState === video.HAVE_NOTHING) {
-    error.value = 'Camera not ready. Please wait for the preview to load.'
-    return
-  }
+  console.log('Attempting to capture photo...')
+  console.log('Video readyState:', video.readyState)
+  console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight)
 
-  // Use actual video dimensions if available, otherwise use default
-  const captureWidth = video.videoWidth || 1280
-  const captureHeight = video.videoHeight || 720
+  // Use video dimensions if available, otherwise use default
+  const captureWidth = video.videoWidth || 640
+  const captureHeight = video.videoHeight || 480
+
+  console.log('Canvas dimensions:', captureWidth, 'x', captureHeight)
 
   // Set canvas dimensions
   canvas.width = captureWidth
   canvas.height = captureHeight
 
-  // Draw the video frame on the canvas
-  context.drawImage(video, 0, 0, captureWidth, captureHeight)
+  // Draw the current video frame on the canvas
+  try {
+    context.drawImage(video, 0, 0, captureWidth, captureHeight)
+    console.log('Successfully drew video frame to canvas')
+  } catch (drawError) {
+    console.error('Error drawing video frame:', drawError)
+    error.value = 'Failed to capture image. Please try again.'
+    return
+  }
 
-  // Convert to blob and create file
+  // Convert canvas to blob and create file
   canvas.toBlob((blob) => {
     if (blob) {
+      console.log('Canvas converted to blob, size:', blob.size)
       const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' })
       selfieFile.value = file
 
@@ -352,12 +380,15 @@ const capturePhoto = () => {
       reader.onload = (e) => {
         selfieImage.value = e.target?.result as string
         showCamera.value = false
+        console.log('Photo captured and preview created successfully')
       }
       reader.onerror = () => {
+        console.error('Error reading captured image blob')
         error.value = 'Error processing captured image. Please try again.'
       }
       reader.readAsDataURL(blob)
     } else {
+      console.error('Canvas toBlob failed')
       error.value = 'Failed to capture image. Please try again.'
     }
   }, 'image/jpeg', 0.9)
