@@ -52,7 +52,7 @@ const totalSteps = computed(() => steps.length)
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
     <!-- Enhanced Header -->
-    <header class="bg-white/80 backdrop-blur-lg shadow-lg border-b border-white/20">
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg shadow-lg border-b border-white/20">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-3">
           <div class="flex items-center space-x-3">
@@ -68,7 +68,7 @@ const totalSteps = computed(() => steps.length)
               <p class="text-xs text-gray-500">Secure Identity Verification Platform</p>
             </div>
           </div>
-          <div class="flex items-center space-x-6">
+          <div class="flex items-center space-x-8">
             <div class="hidden sm:flex items-center space-x-2 bg-blue-50 px-4 py-2 rounded-full">
               <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               <span class="text-xs font-medium text-blue-700">Step {{ currentStep }} of {{ totalSteps }}</span>
@@ -82,7 +82,7 @@ const totalSteps = computed(() => steps.length)
     </header>
 
     <!-- Enhanced Progress Bar -->
-    <div class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 backdrop-blur-sm border-b border-blue-400/30 shadow-lg">
+    <div class="fixed top-16 mt-2 left-0 right-0 z-40 bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 backdrop-blur-sm border-b border-blue-400/30 shadow-lg">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="py-3">
           <div class="flex items-center justify-center">
@@ -120,7 +120,7 @@ const totalSteps = computed(() => steps.length)
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 pt-44">
       <router-view />
     </main>
   </div>

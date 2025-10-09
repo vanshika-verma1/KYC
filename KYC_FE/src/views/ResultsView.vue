@@ -1,7 +1,7 @@
 <template>
-  <div class="max-w-6xl mx-auto">
+  <div class="w-full">
     <!-- Incomplete Verification Notice -->
-    <div v-if="!store.isComplete" class="mb-6 p-5 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200 rounded-2xl">
+    <div v-if="!store.isComplete" class="fixed top-4 left-2 right-2 z-50 mb-6 p-5 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200 rounded-2xl">
       <div class="flex items-start">
         <div class="flex-shrink-0">
           <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
@@ -33,22 +33,17 @@
       </div>
     </div>
 
-    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6">
-      <div class="text-center mb-8">
-        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h2 class="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-3">
+    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6 mx-2 pt-10">
+      <div class="text-center mb-4">
+        <h2 class="text-3xl font-semibold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-1">
           KYC Verification Results
         </h2>
-        <p class="text-gray-600 text-lg">Here's a summary of your identity verification process</p>
+        <p class="text-gray-600 text-sm">Here's a summary of your identity verification process</p>
       </div>
 
       <!-- Enhanced Overall Result -->
-      <div class="text-center mb-8">
-        <div class="relative mb-6">
+      <div class="text-center">
+        <div class="relative">
           <div
             class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4 relative overflow-hidden"
             :class="overallResult.success ? 'bg-gradient-to-br from-green-100 to-emerald-100' : 'bg-gradient-to-br from-red-100 to-rose-100'"
@@ -77,116 +72,18 @@
               />
             </svg>
           </div>
-          <div class="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg" v-if="overallResult.success">
-            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
         </div>
 
-        <h3 class="text-3xl font-bold mb-4" :class="overallResult.success ? 'text-green-800' : 'text-red-800'">
+        <h3 class="text-2xl font-bold mb-1" :class="overallResult.success ? 'text-green-800' : 'text-red-800'">
           {{ overallResult.success ? 'Verification Successful!' : 'Verification Failed' }}
         </h3>
 
-        <p class="text-gray-600 mb-6 text-lg max-w-2xl mx-auto">
+        <p class="text-gray-600 mb-6 text-sm max-w-2xl mx-auto">
           {{ overallResult.message }}
         </p>
       </div>
-
-      <!-- Enhanced Step Results -->
-      <div class="grid gap-6 mb-8">
-
-        <!-- License Validation Result -->
-        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
-          <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900">License Validation</h3>
-            </div>
-            <div class="flex items-center space-x-3">
-              <div
-                class="w-4 h-4 rounded-full shadow-lg"
-                :class="licenseResult.success ? 'bg-green-400' : 'bg-red-400'"
-              ></div>
-              <span class="text-lg font-semibold" :class="licenseResult.success ? 'text-green-600' : 'text-red-600'">
-                {{ licenseResult.success ? 'Verified' : 'Failed' }}
-              </span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div class="bg-white/50 rounded-xl p-4 text-center">
-              <p class="font-bold text-2xl text-gray-800 mb-1">{{ licenseResult.authenticity_score*100 }}%</p>
-              <p class="text-sm text-gray-600">Authenticity Score</p>
-            </div>
-            <div class="bg-white/50 rounded-xl p-4 text-center">
-              <p class="font-bold text-lg text-gray-800 mb-1">{{ licenseResult.confidence_level }}</p>
-              <p class="text-sm text-gray-600">Confidence Level</p>
-            </div>
-          </div>
-
-          <!-- Enhanced Validation Details -->
-          <div class="bg-white/30 rounded-xl p-4">
-            <h4 class="font-semibold text-gray-800 mb-3">Validation Details</h4>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div class="flex items-center space-x-3">
-                <div class="w-3 h-3 rounded-full shadow-sm" :class="licenseResult.validations?.name_match ? 'bg-green-400' : 'bg-red-400'"></div>
-                <span class="font-medium text-gray-700">Name Match</span>
-              </div>
-              <div class="flex items-center space-x-3">
-                <div class="w-3 h-3 rounded-full shadow-sm" :class="licenseResult.validations?.dob_match ? 'bg-green-400' : 'bg-red-400'"></div>
-                <span class="font-medium text-gray-700">DOB Match</span>
-              </div>
-              <div class="flex items-center space-x-3">
-                <div class="w-3 h-3 rounded-full shadow-sm" :class="licenseResult.validations?.id_match ? 'bg-green-400' : 'bg-red-400'"></div>
-                <span class="font-medium text-gray-700">ID Match</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-
-        <!-- Selfie Validation Result -->
-        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
-          <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <h3 class="text-xl font-bold text-gray-900">Selfie Validation</h3>
-            </div>
-            <div class="flex items-center space-x-3">
-              <div
-                class="w-4 h-4 rounded-full shadow-lg"
-                :class="selfieResult?.match_result ? 'bg-green-400' : 'bg-red-400'"
-              ></div>
-              <span class="text-lg font-semibold" :class="selfieResult?.match_result ? 'text-green-600' : 'text-red-600'">
-                {{ selfieResult?.match_result ? 'Verified' : 'Failed' }}
-              </span>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white/50 rounded-xl p-6 text-center">
-              <p class="font-bold text-3xl text-gray-800 mb-2">{{ selfieResult?.similarity_score?.toFixed(1) || 'N/A' }}%</p>
-              <p class="text-sm text-gray-600">Similarity Score</p>
-            </div>
-            <div class="bg-white/50 rounded-xl p-6 text-center">
-              <p class="font-bold text-xl text-gray-800 mb-2">{{ selfieResult?.confidence_level || 'N/A' }}</p>
-              <p class="text-sm text-gray-600">Confidence Level</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ID Information (if available) -->
-      <div v-if="licenseResult.parsed_fields" class="border rounded-lg p-6 mb-8">
+ <!-- ID Information (if available) -->
+      <div v-if="licenseResult.parsed_fields" class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg mb-4">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Extracted Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
           <div>
@@ -211,16 +108,100 @@
           </div>
           <div>
             <p class="font-medium text-gray-700">State</p>
-            <p class="text-gray-600">{{ licenseResult.parsed_fields.DCS || 'N/A' }}</p>
+            <p class="text-gray-600">{{ licenseResult.parsed_fields.DAJ || 'N/A' }}</p>
+          </div>
+        </div>
+      </div>
+      <!-- Enhanced Step Results -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        <!-- License Validation Result -->
+        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 class="text-l font-semibold text-gray-900">License Validation</h3>
+            </div>
+            <div class="flex items-center space-x-3">
+              <span class="text-md font-semibold" :class="licenseResult.success ? 'text-green-600' : 'text-red-600'">
+                {{ licenseResult.success ? 'Verified' : 'Failed' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+            <div class="bg-white/50 rounded-xl p-4 text-center">
+              <p class="font-semibold text-xl text-gray-800 mb-1">{{ licenseResult.authenticity_score*100 }}%</p>
+              <p class="text-sm text-gray-600">Authenticity Score</p>
+            </div>
+            <div class="bg-white/50 rounded-xl p-4 text-center">
+              <p class="font-semibold text-xl text-gray-800 mb-1">{{ licenseResult.confidence_level }}</p>
+              <p class="text-sm text-gray-600">Confidence Level</p>
+            </div>
+          </div>
+
+          <!-- Enhanced Validation Details -->
+          <div class="bg-white/30 rounded-xl p-2">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 rounded-full shadow-sm" :class="licenseResult.validations?.name_match ? 'bg-green-400' : 'bg-red-400'"></div>
+                <span class="font-medium text-sm text-gray-700">Name Match</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 rounded-full shadow-sm" :class="licenseResult.validations?.dob_match ? 'bg-green-400' : 'bg-red-400'"></div>
+                <span class="font-medium text-sm text-gray-700">DOB Match</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 rounded-full shadow-sm" :class="licenseResult.validations?.id_match ? 'bg-green-400' : 'bg-red-400'"></div>
+                <span class="font-medium text-sm text-gray-700">ID Match</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+        <!-- Selfie Validation Result -->
+        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
+          <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h3 class="text-l font-semibold text-gray-900">Selfie Validation</h3>
+            </div>
+            <div class="flex items-center space-x-3">
+              <span class="text-md font-semibold" :class="selfieResult?.match_result ? 'text-green-600' : 'text-red-600'">
+                {{ selfieResult?.match_result ? 'Verified' : 'Failed' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white/50 rounded-l p-4 text-center">
+              <p class="font-semibold text-xl text-gray-800 mb-2">{{ selfieResult?.similarity_score?.toFixed(1) || 'N/A' }}%</p>
+              <p class="text-sm text-gray-600">Similarity Score</p>
+            </div>
+            <div class="bg-white/50 rounded-l p-4 text-center">
+              <p class="font-semibold text-xl text-gray-800 mb-2">{{ selfieResult?.confidence_level || 'N/A' }}</p>
+              <p class="text-sm text-gray-600">Confidence Level</p>
+            </div>
           </div>
         </div>
       </div>
 
+     
+
       <!-- Enhanced Actions -->
-      <div class="flex flex-col sm:flex-row gap-6 justify-center">
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
         <button
           @click="restartProcess"
-          class="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105"
+          class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -230,7 +211,7 @@
 
         <button
           @click="downloadReport"
-          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105"
+          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all"
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -240,13 +221,13 @@
       </div>
 
       <!-- Enhanced Processing Information -->
-      <div class="mt-12 text-center">
-        <div class="bg-white/40 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-          <div class="flex items-center justify-center space-x-2">
-            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="text-center">
+        <div class="bg-white/40 backdrop-blur-sm rounded-2xl p-4 border border-white/20">
+          <div class="flex items-center justify-center space-x-1">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <p class="text-sm font-semibold text-gray-700">Verification completed on {{ new Date().toLocaleString() }}</p>
+            <p class="text-xs font-medium text-gray-700">Verification completed on {{ new Date().toLocaleString() }}</p>
           </div>
         </div>
       </div>
@@ -300,9 +281,10 @@ const overallResult = computed(() => {
 
 const getFullName = (fields: any) => {
   const nameParts = [
+    fields.DCU,
     fields.DAC, // First name
     fields.DAD, // Middle name
-    fields.DCU  // Last name
+    fields.DCS  // Last name
   ].filter(Boolean)
 
   return nameParts.join(' ') || 'N/A'
