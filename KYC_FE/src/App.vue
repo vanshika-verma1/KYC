@@ -1,3 +1,40 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const steps = [
+  {
+    title: 'License Validation',
+    description: 'Upload ID images',
+    status: computed(() => getStepStatus('/license')),
+    path: '/license'
+  },
+  {
+    title: 'Selfie Validation',
+    description: 'Verify your identity',
+    status: computed(() => getStepStatus('/selfie')),
+    path: '/selfie'
+  }
+]
+
+function getStepStatus(path: string) {
+  const currentPath = router.currentRoute.value.path
+  if (currentPath === path) return 'active'
+  if (currentPath === '/results') return 'completed'
+  return 'pending'
+}
+
+const currentStep = computed(() => {
+  const currentPath = router.currentRoute.value.path
+  const stepIndex = steps.findIndex(step => step.path === currentPath)
+  return stepIndex >= 0 ? stepIndex + 1 : 1
+})
+
+const totalSteps = computed(() => steps.length)
+</script>
+
 <template>
   <div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
     <!-- Enhanced Header -->
@@ -73,40 +110,3 @@
     </main>
   </div>
 </template>
-
-<script setup lang="ts">
-import { computed } from 'vue'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
-const steps = [
-  {
-    title: 'License Validation',
-    description: 'Upload ID images',
-    status: computed(() => getStepStatus('/license')),
-    path: '/license'
-  },
-  {
-    title: 'Selfie Validation',
-    description: 'Verify your identity',
-    status: computed(() => getStepStatus('/selfie')),
-    path: '/selfie'
-  }
-]
-
-function getStepStatus(path: string) {
-  const currentPath = router.currentRoute.value.path
-  if (currentPath === path) return 'active'
-  if (currentPath === '/results') return 'completed'
-  return 'pending'
-}
-
-const currentStep = computed(() => {
-  const currentPath = router.currentRoute.value.path
-  const stepIndex = steps.findIndex(step => step.path === currentPath)
-  return stepIndex >= 0 ? stepIndex + 1 : 1
-})
-
-const totalSteps = computed(() => steps.length)
-</script>
