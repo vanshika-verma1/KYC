@@ -1,7 +1,7 @@
 <template>
-  <div class="max-w-7xl mx-auto">
+  <div class="max-w-6xl mx-auto">
     <!-- Incomplete Verification Notice -->
-    <div v-if="!store.isComplete" class="mb-8 p-6 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200 rounded-2xl">
+    <div v-if="!store.isComplete" class="mb-6 p-5 bg-yellow-50/80 backdrop-blur-sm border border-yellow-200 rounded-2xl">
       <div class="flex items-start">
         <div class="flex-shrink-0">
           <svg class="w-6 h-6 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
@@ -33,10 +33,10 @@
       </div>
     </div>
 
-    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
-      <div class="text-center mb-12">
-        <div class="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
@@ -47,10 +47,10 @@
       </div>
 
       <!-- Enhanced Overall Result -->
-      <div class="text-center mb-12">
-        <div class="relative mb-8">
+      <div class="text-center mb-8">
+        <div class="relative mb-6">
           <div
-            class="inline-flex items-center justify-center w-32 h-32 rounded-full mb-6 relative overflow-hidden"
+            class="inline-flex items-center justify-center w-24 h-24 rounded-full mb-4 relative overflow-hidden"
             :class="overallResult.success ? 'bg-gradient-to-br from-green-100 to-emerald-100' : 'bg-gradient-to-br from-red-100 to-rose-100'"
           >
             <div class="absolute inset-0 bg-white/20 backdrop-blur-sm"></div>
@@ -94,10 +94,10 @@
       </div>
 
       <!-- Enhanced Step Results -->
-      <div class="grid gap-8 mb-12">
+      <div class="grid gap-6 mb-8">
 
         <!-- License Validation Result -->
-        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-8 shadow-lg">
+        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center space-x-3">
               <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -151,7 +151,7 @@
 
 
         <!-- Selfie Validation Result -->
-        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-8 shadow-lg">
+        <div class="bg-white/60 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg">
           <div class="flex items-center justify-between mb-6">
             <div class="flex items-center space-x-3">
               <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
@@ -220,7 +220,7 @@
       <div class="flex flex-col sm:flex-row gap-6 justify-center">
         <button
           @click="restartProcess"
-          class="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-semibold py-4 px-10 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          class="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105"
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -230,7 +230,7 @@
 
         <button
           @click="downloadReport"
-          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-4 px-10 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:scale-105"
         >
           <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l4-4m-4 4l-4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

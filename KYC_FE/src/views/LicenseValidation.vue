@@ -106,34 +106,34 @@ const validateLicense = async () => {
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto">
-    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-8">
-      <div class="text-center mb-8">
+  <div class="max-w-4xl mx-auto">
+    <div class="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-white/20 p-6">
+      <div class="text-center mb-6">
         <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h2 class="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
+        <h2 class="text-2xl font-semibold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent mb-2">
           License Validation
         </h2>
-        <p class="text-gray-600 text-lg">
-          Please upload clear photos of both sides of your government-issued ID card.
+        <p class="text-gray-600 text-md">
+          Please upload clear photos of both sides of your government-issued License ID.
         </p>
       </div>
 
       <!-- Upload Sections -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-start">
 
         <!-- Front Image Upload -->
-        <div class="space-y-4">
+        <div class="space-y-3 h-full">
           <div class="text-center">
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Front Side</h3>
+            <h3 class="text-xl font-semibold text-gray-800 mb-1">Front Side</h3>
             <p class="text-sm text-gray-500">Upload the front of your ID card</p>
           </div>
           <div class="relative group">
             <div :class="[
-              'border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer',
+              'border-2 border-dashed rounded-2xl p-5 text-center transition-all duration-300 cursor-pointer min-h-[280px] flex flex-col justify-center',
               'hover:scale-[1.02] hover:shadow-lg',
               frontImage ? 'border-green-300 bg-green-50/50' : 'border-gray-300 hover:border-blue-400 bg-gray-50/50'
             ]" @click="triggerFrontInput">
@@ -145,33 +145,31 @@ const validateLicense = async () => {
                 class="hidden"
               />
               <div v-if="!frontImage" class="space-y-4">
-                <div class="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p class="text-gray-600 mb-3">Drag & drop or click to upload</p>
-                  <button class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                  <button class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all">
                     Choose Front Image
                   </button>
                 </div>
               </div>
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-2 flex-1 flex flex-col justify-center">
                 <div class="relative">
-                  <img :src="frontImage" alt="Front side" class="w-full h-48 object-contain rounded-xl shadow-md" />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl"></div>
+                  <img :src="frontImage" alt="Front side" class="w-full h-36 object-contain rounded-xl" />
                   <div class="absolute top-2 right-2">
-                    <div class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    <div class="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full">
                       ✓ Uploaded
                     </div>
                   </div>
                 </div>
                 <div class="flex justify-center space-x-3">
-                  <button @click.stop="triggerFrontInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                  <button @click.stop="triggerFrontInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-gray-300">
                     Change Image
                   </button>
-                  <button @click.stop="removeFrontImage" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-lg transition-colors">
+                  <button @click.stop="removeFrontImage" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-red-150">
                     Remove
                   </button>
                 </div>
@@ -181,14 +179,14 @@ const validateLicense = async () => {
         </div>
 
         <!-- Back Image Upload -->
-        <div class="space-y-4">
+        <div class="space-y-3 h-full">
           <div class="text-center">
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">Back Side</h3>
+            <h3 class="text-xl font-semibold text-gray-800 mb-1">Back Side</h3>
             <p class="text-sm text-gray-500">Upload the back of your ID card</p>
           </div>
           <div class="relative group">
             <div :class="[
-              'border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer',
+              'border-2 border-dashed rounded-2xl p-5 text-center transition-all duration-300 cursor-pointer min-h-[280px] flex flex-col justify-center',
               'hover:scale-[1.02] hover:shadow-lg',
               backImage ? 'border-green-300 bg-green-50/50' : 'border-gray-300 hover:border-blue-400 bg-gray-50/50'
             ]" @click="triggerBackInput">
@@ -200,33 +198,31 @@ const validateLicense = async () => {
                 class="hidden"
               />
               <div v-if="!backImage" class="space-y-4">
-                <div class="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <svg class="w-10 h-10 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p class="text-gray-600 mb-3">Drag & drop or click to upload</p>
-                  <button class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all">
+                  <button class="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all">
                     Choose Back Image
                   </button>
                 </div>
               </div>
-              <div v-else class="space-y-4">
+              <div v-else class="space-y-2 flex-1 flex flex-col justify-center">
                 <div class="relative">
-                  <img :src="backImage" alt="Back side" class="w-full h-48 object-contain rounded-xl shadow-md" />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl"></div>
+                  <img :src="backImage" alt="Back side" class="w-full h-36 object-contain rounded-xl" />
                   <div class="absolute top-2 right-2">
-                    <div class="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    <div class="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded-full">
                       ✓ Uploaded
                     </div>
                   </div>
                 </div>
                 <div class="flex justify-center space-x-3">
-                  <button @click.stop="triggerBackInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors">
+                  <button @click.stop="triggerBackInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-gray-300">
                     Change Image
                   </button>
-                  <button @click.stop="removeBackImage" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-2 px-4 rounded-lg transition-colors">
+                  <button @click.stop="removeBackImage" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-red-150">
                     Remove
                   </button>
                 </div>
@@ -237,12 +233,12 @@ const validateLicense = async () => {
       </div>
 
       <!-- Submit Button -->
-      <div class="text-center pt-6">
+      <div class="text-center pt-2">
         <button
           @click="validateLicense"
           :disabled="!frontImage || !backImage || isLoading"
           :class="[
-            'relative px-12 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform',
+            'relative px-8 py-3 rounded-xl font-medium text-base transition-all duration-300 transform',
             'disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none',
             frontImage && backImage && !isLoading
               ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105'
@@ -266,11 +262,11 @@ const validateLicense = async () => {
 
         <!-- Progress indicator for both images -->
         <div class="flex justify-center space-x-4 mt-4">
-          <div class="flex items-center space-x-2 text-sm">
+          <div class="flex items-center space-x-2 text-xs">
             <div :class="frontImage ? 'w-3 h-3 bg-green-500 rounded-full' : 'w-3 h-3 bg-gray-300 rounded-full'"></div>
             <span :class="frontImage ? 'text-green-600 font-medium' : 'text-gray-500'">Front Image</span>
           </div>
-          <div class="flex items-center space-x-2 text-sm">
+          <div class="flex items-center space-x-2 text-xs">
             <div :class="backImage ? 'w-3 h-3 bg-green-500 rounded-full' : 'w-3 h-3 bg-gray-300 rounded-full'"></div>
             <span :class="backImage ? 'text-green-600 font-medium' : 'text-gray-500'">Back Image</span>
           </div>
