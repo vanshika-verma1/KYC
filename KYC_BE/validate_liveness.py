@@ -39,7 +39,6 @@ def load_pad_model(onnx_path: str):
     else:
         # fallback defaults
         pad_input_shape = (3, 128, 128)
-    print(f"[PAD] Loaded ONNX {onnx_path} -> input shape {pad_input_shape}, input name '{pad_input_name}'")
 
 def predict_spoof(face_bgr: np.ndarray) -> float:
     """
@@ -312,7 +311,6 @@ def get_liveness_websocket_router():
 
 def initialize_liveness_model():
     """Initialize the PAD model for liveness detection"""
-    print("Loading PAD model:", PAD_MODEL_PATH)
     load_pad_model(PAD_MODEL_PATH)
 
 # Create the FastAPI app instance for liveness

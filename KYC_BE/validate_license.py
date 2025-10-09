@@ -378,26 +378,36 @@ def validate_license_images(back_image: UploadFile, front_image: UploadFile) -> 
 
     return True, ""
 
-# ------------------ Helpers ------------------ #
+AAMVA_FIELDS = [
+    "DCS","DDE","DAC","DDF","DAD","DDG","DCA","DCB","DCD",
+    "DBD","DBB","DBA","DBC","DAU","DAY","DAG","DAI","DAJ",
+    "DAK","DCF","DCG","DCU","DAW","DAZ","DCL","DCK","DDA","DDB",
+    "B","C","ZNZ","ZNB","ZNC","DAQ"
+]
+
 def parse_aamva(barcode_text: str) -> dict:
     """
-    Parse AAMVA-compliant barcode text.
+    Parse AAMVA barcode text by detecting all field IDs within a single line.
     """
-    barcode_text = (
-        barcode_text.replace("<LF>", "\n")
-        .replace("<RS>", "\x1E")
-        .replace("<CR>", "\x0D")
-        .replace("<GS>", "\x1D")
-    )
+    barcode_text = barcode_text.replace("<LF>", "\n").replace("<RS>", "\x1E").replace("<CR>", "\x0D").replace("<GS>", "\x1D")
     parsed = {}
-    lines = re.split(r"[\n\x0D\x1E]", barcode_text)
-    for line in lines:
-        line = line.strip()
-        if len(line) >= 3 and line[:3].isalpha():
-            parsed[line[:3]] = line[3:].strip()
-    for key in parsed:
-        if "\x1D" in parsed[key]:
-            parsed[key] = parsed[key].split("\x1D")
+    i = 0
+    while i < len(barcode_text):
+        # Check if the next 3 chars are a known field ID
+        if barcode_text[i:i+3] in AAMVA_FIELDS:
+            field_id = barcode_text[i:i+3]
+            i += 3
+            value_start = i
+            # Look for next field ID
+            next_field_pos = len(barcode_text)
+            for fid in AAMVA_FIELDS:
+                pos = barcode_text.find(fid, i)
+                if pos != -1 and pos < next_field_pos:
+                    next_field_pos = pos
+            parsed[field_id] = barcode_text[value_start:next_field_pos].strip()
+            i = next_field_pos
+        else:
+            i += 1
     return parsed
 
 def validate_date(date_str: str) -> bool:
