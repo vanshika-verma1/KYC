@@ -26,17 +26,20 @@ load_dotenv()
 logging.basicConfig(level=logging.WARNING)  # Only warnings and errors in production
 logger = logging.getLogger(__name__)
 
-# Tesseract OCR configuration - Use absolute path to Models folder
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(CURRENT_DIR, "Models", "Tesseract-OCR")
-TESSERACT_CMD = os.path.join(MODELS_DIR, "tesseract.exe")
+# Tesseract OCR configuration - Read path from .env file
+TESSERACT_CMD = os.getenv("ocr_path")
 
-# Set Tesseract path
-pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
-
-# Verify Tesseract exists and log the path
-if not os.path.exists(TESSERACT_CMD):
-    logger.warning(f"Tesseract not found at {TESSERACT_CMD}. Using system default.")
+# Set Tesseract path from environment variable
+if TESSERACT_CMD:
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+    # Verify Tesseract exists and log the path
+    if not os.path.exists(TESSERACT_CMD):
+        logger.warning(f"Tesseract not found at {TESSERACT_CMD}. Using system default.")
+        pytesseract.pytesseract.tesseract_cmd = "tesseract"
+    else:
+        logger.info(f"Using Tesseract from .env path: {TESSERACT_CMD}")
+else:
+    logger.warning("ocr_path not found in .env file. Using system default.")
     pytesseract.pytesseract.tesseract_cmd = "tesseract"
 
 router = APIRouter()
