@@ -513,6 +513,386 @@ def is_similar_dob(dob1: str, dob2: str, max_diff: int = 2) -> bool:
         return False
     return levenshtein_distance(dob1_clean, dob2_clean) <= max_diff
 
+async def preprocess_barcode_image(image_bytes: bytes, original_pil: Image.Image) -> Image.Image:
+    """
+    Enhanced barcode preprocessing for full license images with multiple fallback methods.
+    """
+    try:
+        # Convert to OpenCV format
+        cv_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if cv_image is None:
+            raise ValueError("Failed to decode image")
+
+        # Method 1: Try simple preprocessing first (less aggressive)
+        back_gray = ImageOps.grayscale(original_pil)
+        back_cv_array = np.array(back_gray)
+
+        # Try simple binary threshold - often works better for barcodes
+        _, simple_thresh = cv2.threshold(back_cv_array, 128, 255, cv2.THRESH_BINARY)
+        simple_img = Image.fromarray(simple_thresh)
+
+        # Test if this simple preprocessing works
+        test_results = zxingcpp.read_barcodes(simple_img)
+        if test_results and len(test_results[0].text) > 10:
+            logger.info("Simple preprocessing worked for barcode detection")
+            return simple_img
+
+        # Method 2: Try to detect and crop barcode region first
+        barcode_region = detect_barcode_region(cv_image)
+        if barcode_region is not None:
+            cropped = crop_barcode_region(cv_image, barcode_region)
+            processed = enhance_barcode_image(cropped)
+            if processed is not None:
+                cropped_img = Image.fromarray(processed)
+                # Test the cropped version
+                test_results = zxingcpp.read_barcodes(cropped_img)
+                if test_results and len(test_results[0].text) > 10:
+                    logger.info("Cropped barcode region detection worked")
+                    return cropped_img
+
+        # Method 3: Use enhanced preprocessing on full image
+        enhanced = enhance_barcode_image(cv_image)
+        if enhanced is not None:
+            enhanced_img = Image.fromarray(enhanced)
+            # Test enhanced version
+            test_results = zxingcpp.read_barcodes(enhanced_img)
+            if test_results and len(test_results[0].text) > 10:
+                logger.info("Enhanced preprocessing worked")
+                return enhanced_img
+
+        # Method 4: Try multiple threshold methods
+        thresh_methods = [
+            (cv2.THRESH_BINARY + cv2.THRESH_OTSU, 0, 255),
+            (cv2.THRESH_BINARY, 100, 255),
+            (cv2.THRESH_BINARY, 150, 255),
+        ]
+
+        for method, thresh_val, max_val in thresh_methods:
+            try:
+                _, thresh_img = cv2.threshold(back_cv_array, thresh_val, max_val, method)
+                test_img = Image.fromarray(thresh_img)
+
+                # Test each threshold method
+                test_results = zxingcpp.read_barcodes(test_img)
+                if test_results and len(test_results[0].text) > 10:
+                    logger.info(f"Threshold method {method} worked")
+                    return test_img
+            except:
+                continue
+
+        # Method 5: Return original grayscale as final fallback
+        logger.info("Using original grayscale image for barcode detection")
+        return back_gray
+
+    except Exception as e:
+        logger.warning(f"Enhanced barcode preprocessing failed: {e}. Using original approach.")
+        # Fallback to original method
+        back_gray = ImageOps.grayscale(original_pil)
+        back_cv_array = np.array(back_gray)
+        _, back_thresh = cv2.threshold(back_cv_array, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return Image.fromarray(back_thresh)
+
+def detect_barcode_region(image: np.ndarray) -> Optional[Dict[str, int]]:
+    """
+    Detect the barcode region in the image using contour detection and shape analysis.
+    """
+    try:
+        # Convert to grayscale
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Apply blur to reduce noise
+        blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+
+        # Edge detection
+        edges = cv2.Canny(blurred, 50, 150)
+
+        # Find contours
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Look for rectangular regions that could be PDF417 barcodes
+        barcode_candidates = []
+
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area < 1000:  # Too small
+                continue
+
+            # Get bounding rectangle
+            x, y, w, h = cv2.boundingRect(contour)
+            aspect_ratio = w / h if h > 0 else 0
+
+            # PDF417 barcodes typically have aspect ratio between 2:1 and 4:1
+            # and are fairly large compared to other elements
+            if 2.0 <= aspect_ratio <= 4.0 and area > 5000:
+                # Calculate fill ratio (how much of the bounding box is filled)
+                fill_ratio = area / (w * h)
+
+                if fill_ratio > 0.3:  # Should be reasonably filled
+                    barcode_candidates.append({
+                        'x': x, 'y': y, 'w': w, 'h': h,
+                        'area': area,
+                        'aspect_ratio': aspect_ratio,
+                        'fill_ratio': fill_ratio
+                    })
+
+        if barcode_candidates:
+            # Return the candidate with highest score (area * aspect_ratio * fill_ratio)
+            best_candidate = max(barcode_candidates,
+                               key=lambda c: c['area'] * c['aspect_ratio'] * c['fill_ratio'])
+            return best_candidate
+
+        return None
+
+    except Exception as e:
+        logger.warning(f"Barcode region detection failed: {e}")
+        return None
+
+def crop_barcode_region(image: np.ndarray, region: Dict[str, int]) -> np.ndarray:
+    """
+    Crop the image to focus on the detected barcode region with some padding.
+    """
+    try:
+        x, y, w, h = region['x'], region['y'], region['w'], region['h']
+
+        # Add padding around the detected region (10% of dimensions)
+        pad_x = int(w * 0.1)
+        pad_y = int(h * 0.1)
+
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(image.shape[1], x + w + pad_x)
+        y2 = min(image.shape[0], y + h + pad_y)
+
+        cropped = image[y1:y2, x1:x2]
+        return cropped
+
+    except Exception as e:
+        logger.warning(f"Barcode cropping failed: {e}")
+        return image
+
+def enhance_barcode_image(image: np.ndarray) -> Optional[np.ndarray]:
+    """
+    Apply barcode-specific image enhancements.
+    """
+    try:
+        # Convert to grayscale if needed
+        if len(image.shape) > 2:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            gray = image
+
+        # Apply morphological operations to enhance barcode lines
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+
+        # Top-hat transform to enhance dark lines on lighter background
+        tophat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, kernel)
+
+        # Black-hat transform to enhance light lines on darker background
+        blackhat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, kernel)
+
+        # Combine the results
+        enhanced = cv2.add(gray, tophat)
+        enhanced = cv2.subtract(enhanced, blackhat)
+
+        # Apply adaptive thresholding for better contrast
+        thresh = cv2.adaptiveThreshold(
+            enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+
+        return thresh
+
+    except Exception as e:
+        logger.warning(f"Barcode enhancement failed: {e}")
+        return None
+
+def assess_barcode_quality(image: np.ndarray) -> float:
+    """
+    Assess image quality for barcode detection (simple heuristic).
+    """
+    try:
+        # Calculate variance as a proxy for sharpness
+        variance = cv2.Laplacian(image, cv2.CV_64F).var()
+
+        # Calculate contrast
+        contrast = image.std()
+
+        # Simple quality score (higher is better)
+        quality_score = min((variance + contrast) / 1000.0, 1.0)
+
+        return quality_score
+
+    except Exception as e:
+        logger.warning(f"Quality assessment failed: {e}")
+        return 0.0
+
+async def decode_barcode_with_fallbacks(processed_img: Image.Image, original_pil: Image.Image, original_bytes: bytes) -> tuple:
+    """
+    Decode PDF417 barcode with multiple fallback methods for better detection.
+    """
+    # Method 1: Try with the enhanced preprocessing
+    try:
+        barcode_results = zxingcpp.read_barcodes(processed_img)
+        if barcode_results:
+            barcode_text = barcode_results[0].text
+            if barcode_text and len(barcode_text) > 10:  # Basic validation
+                parsed_data = parse_aamva(barcode_text)
+                logger.info(f"Successfully decoded barcode with enhanced preprocessing (length: {len(barcode_text)})")
+                return barcode_text, parsed_data
+    except Exception as e:
+        logger.warning(f"Enhanced preprocessing barcode detection failed: {e}")
+
+    # Method 2: Try with different preprocessing approaches
+    preprocessing_methods = [
+        lambda img: apply_morphological_transforms(img),
+        lambda img: apply_histogram_equalization(img),
+        lambda img: apply_adaptive_thresholding(img),
+        lambda img: apply_simple_thresholding(img),
+    ]
+
+    for i, preprocess_func in enumerate(preprocessing_methods):
+        try:
+            processed = preprocess_func(original_pil)
+            if processed is not None:
+                barcode_results = zxingcpp.read_barcodes(processed)
+                if barcode_results:
+                    barcode_text = barcode_results[0].text
+                    if barcode_text and len(barcode_text) > 10:
+                        parsed_data = parse_aamva(barcode_text)
+                        logger.info(f"Successfully decoded barcode with preprocessing method {i+1} (length: {len(barcode_text)})")
+                        return barcode_text, parsed_data
+        except Exception as e:
+            logger.warning(f"Preprocessing method {i+1} failed: {e}")
+            continue
+
+    # Method 3: Try with the original image directly (no preprocessing)
+    try:
+        barcode_results = zxingcpp.read_barcodes(original_pil)
+        if barcode_results:
+            barcode_text = barcode_results[0].text
+            if barcode_text and len(barcode_text) > 10:
+                parsed_data = parse_aamva(barcode_text)
+                logger.info(f"Successfully decoded barcode with original image (length: {len(barcode_text)})")
+                return barcode_text, parsed_data
+    except Exception as e:
+        logger.warning(f"Original image barcode detection failed: {e}")
+
+    # Method 4: Try with barcode region detection and focused processing
+    try:
+        barcode_text = await decode_with_region_focus(original_bytes)
+        if barcode_text and len(barcode_text) > 10:
+            parsed_data = parse_aamva(barcode_text)
+            logger.info(f"Successfully decoded barcode with region focus (length: {len(barcode_text)})")
+            return barcode_text, parsed_data
+    except Exception as e:
+        logger.warning(f"Region-focused barcode detection failed: {e}")
+
+    # If all methods failed
+    logger.error("All barcode detection methods failed")
+    raise HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="No PDF417 barcode found - ensure back image shows barcode clearly. Try uploading a cropped barcode image if the full license image doesn't work."
+    )
+
+def apply_morphological_transforms(image: Image.Image) -> Optional[Image.Image]:
+    """Apply morphological operations for barcode enhancement."""
+    try:
+        cv_img = np.array(image.convert('L'))
+
+        # Apply morphological operations
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+
+        # Opening to remove noise
+        opened = cv2.morphologyEx(cv_img, cv2.MORPH_OPEN, kernel)
+
+        # Closing to fill gaps
+        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
+
+        return Image.fromarray(closed)
+    except Exception as e:
+        logger.warning(f"Morphological transforms failed: {e}")
+        return None
+
+def apply_histogram_equalization(image: Image.Image) -> Optional[Image.Image]:
+    """Apply histogram equalization for contrast enhancement."""
+    try:
+        cv_img = np.array(image.convert('L'))
+
+        # Apply histogram equalization
+        equalized = cv2.equalizeHist(cv_img)
+
+        return Image.fromarray(equalized)
+    except Exception as e:
+        logger.warning(f"Histogram equalization failed: {e}")
+        return None
+
+def apply_adaptive_thresholding(image: Image.Image) -> Optional[Image.Image]:
+    """Apply adaptive thresholding for better contrast."""
+    try:
+        cv_img = np.array(image.convert('L'))
+
+        # Apply adaptive thresholding
+        thresh = cv2.adaptiveThreshold(
+            cv_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2
+        )
+
+        return Image.fromarray(thresh)
+    except Exception as e:
+        logger.warning(f"Adaptive thresholding failed: {e}")
+        return None
+
+def apply_simple_thresholding(image: Image.Image) -> Optional[Image.Image]:
+    """Apply simple binary thresholding."""
+    try:
+        cv_img = np.array(image.convert('L'))
+
+        # Try different threshold values
+        for thresh_val in [100, 128, 150, 180]:
+            try:
+                _, thresh = cv2.threshold(cv_img, thresh_val, 255, cv2.THRESH_BINARY)
+                return Image.fromarray(thresh)
+            except:
+                continue
+
+        return None
+    except Exception as e:
+        logger.warning(f"Simple thresholding failed: {e}")
+        return None
+
+async def decode_with_region_focus(image_bytes: bytes) -> Optional[str]:
+    """Try to detect barcode region and decode with focused processing."""
+    try:
+        cv_image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+        if cv_image is None:
+            return None
+
+        # Detect barcode region
+        region = detect_barcode_region(cv_image)
+        if region is None:
+            return None
+
+        # Crop to barcode region
+        cropped = crop_barcode_region(cv_image, region)
+        if cropped is None:
+            return None
+
+        # Enhance the cropped region
+        enhanced = enhance_barcode_image(cropped)
+        if enhanced is None:
+            return None
+
+        # Try to decode
+        temp_img = Image.fromarray(enhanced)
+        barcode_results = zxingcpp.read_barcodes(temp_img)
+
+        if barcode_results:
+            return barcode_results[0].text
+
+        return None
+
+    except Exception as e:
+        logger.warning(f"Region-focused decoding failed: {e}")
+        return None
+
 # ------------------ Enhanced Endpoint with Caching and Async ------------------ #
 @router.post("/validate_license")
 async def parse_doc(request: Request, back_image: UploadFile = File(...), front_image: UploadFile = File(...)):
@@ -580,37 +960,11 @@ async def parse_doc(request: Request, back_image: UploadFile = File(...), front_
                 detail="Failed to decode images with OpenCV"
             )
 
-        # Preprocess back for barcode
-        try:
-            back_gray = ImageOps.grayscale(back_img_pil)
-            back_cv_array = np.array(back_gray)
-            _, back_thresh = cv2.threshold(back_cv_array, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            back_img = Image.fromarray(back_thresh)
-        except Exception as e:
-            logger.error(f"Barcode preprocessing error: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Failed to process barcode image"
-            )
+        # Enhanced barcode preprocessing for full license images
+        back_img = await preprocess_barcode_image(back_bytes, back_img_pil)
 
-        # Decode PDF417 barcode
-        try:
-            barcode_results = zxingcpp.read_barcodes(back_img)
-            if not barcode_results:
-                logger.warning("No PDF417 barcode found in image")
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="No PDF417 barcode found - ensure back image shows barcode clearly"
-                )
-            barcode_text = barcode_results[0].text
-            parsed_data = parse_aamva(barcode_text)
-            logger.info("Successfully parsed barcode data")
-        except Exception as e:
-            logger.error(f"Barcode decoding error: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Failed to decode barcode data"
-            )
+        # Enhanced PDF417 barcode detection with multiple fallback methods
+        barcode_text, parsed_data = await decode_barcode_with_fallbacks(back_img, back_img_pil, back_bytes)
 
         # Assess front image quality
         blur_score = detect_blur(front_cv)

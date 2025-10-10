@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useKycStore } from '@/stores/kyc'
 import {environments} from "@/env.ts"
@@ -7,10 +7,33 @@ import {environments} from "@/env.ts"
 const router = useRouter()
 const store = useKycStore()
 
+// Security check - ensure user has completed license validation
+onMounted(() => {
+  if (!store.licenseResult) {
+    // If license validation is not completed, redirect to license step
+    router.push('/license')
+    return
+  }
+})
+
+// Cleanup camera on component unmount
+onUnmounted(() => {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach(track => track.stop())
+  }
+})
+
 
 // Template refs
 const fileInput = ref<HTMLInputElement>()
 const canvasElement = ref<HTMLCanvasElement>()
+
+// Camera refs and state
+const cameraModal = ref(false)
+const cameraStream = ref<MediaStream | null>(null)
+const videoElement = ref<HTMLVideoElement>()
+const cameraError = ref('')
+const videoLoading = ref(false)
 
 // Reactive state
 const selfieImage = ref<string>('')
@@ -44,6 +67,133 @@ const removeImage = () => {
   }
 }
 
+// Camera functions for selfie capture
+const startCamera = async () => {
+  try {
+    cameraError.value = ''
+    videoLoading.value = true
+
+    const constraints: MediaStreamConstraints = {
+      video: {
+        facingMode: 'user', // Use front camera for selfie
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    cameraStream.value = stream
+    cameraModal.value = true
+
+    // Wait for next DOM update to ensure video element is available
+    await nextTick()
+    if (videoElement.value) {
+      videoElement.value.srcObject = stream
+      // Add event listener for when video is ready
+      videoElement.value.onloadedmetadata = () => {
+        videoLoading.value = false
+      }
+    }
+  } catch (err) {
+    cameraError.value = err instanceof Error ? err.message : 'Failed to access camera'
+    console.error('Camera access error:', err)
+    videoLoading.value = false
+  }
+}
+
+const stopCamera = () => {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+    cameraStream.value = null
+  }
+  cameraModal.value = false
+}
+
+const capturePhoto = () => {
+  try {
+    // Check if all required elements are available
+    if (!videoElement.value) {
+      cameraError.value = 'Video element not available'
+      return
+    }
+
+    if (!canvasElement.value) {
+      cameraError.value = 'Canvas element not available'
+      return
+    }
+
+    if (!cameraStream.value) {
+      cameraError.value = 'Camera stream not available'
+      return
+    }
+
+    const video = videoElement.value
+    const canvas = canvasElement.value
+
+    // Ensure video is ready and has dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      cameraError.value = 'Video not ready. Please wait a moment and try again.'
+      return
+    }
+
+    const context = canvas.getContext('2d')
+    if (!context) {
+      cameraError.value = 'Could not get canvas context'
+      return
+    }
+
+    // Set canvas dimensions to video dimensions
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+
+    // Draw current video frame to canvas
+    context.drawImage(video, 0, 0)
+
+    // Convert canvas to blob with error handling
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        cameraError.value = 'Failed to capture image. Please try again.'
+        return
+      }
+
+      try {
+        // Create a File object from the blob
+        const timestamp = new Date().getTime()
+        const fileName = `selfie_${timestamp}.jpg`
+        const file = new File([blob], fileName, { type: 'image/jpeg' })
+
+        // Update the selfie image state
+        selfieFile.value = file
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          selfieImage.value = e.target?.result as string
+        }
+        reader.onerror = () => {
+          cameraError.value = 'Failed to process selfie image'
+        }
+        reader.readAsDataURL(file)
+
+        // Stop camera and close modal after successful capture
+        stopCamera()
+      } catch (err) {
+        cameraError.value = 'Failed to create image file'
+        console.error('File creation error:', err)
+      }
+    }, 'image/jpeg', 0.9)
+  } catch (err) {
+    cameraError.value = 'An unexpected error occurred during capture'
+    console.error('Capture error:', err)
+  }
+}
+
+const takePhoto = () => {
+  startCamera()
+}
+
+const closeCamera = () => {
+  stopCamera()
+}
+
 // API validation function
 const validateSelfie = async () => {
   if (!selfieFile.value || !store.frontImageFile) return
@@ -72,6 +222,11 @@ const validateSelfie = async () => {
 
     // Store selfie validation result
     store.setSelfieResult(result)
+
+    // Update verification state - mark selfie step as completed
+    if ((window as any).verificationState) {
+      (window as any).verificationState.completeStep('selfie')
+    }
 
     // Navigate to results page
     router.push('/results')
@@ -114,26 +269,36 @@ const validateSelfie = async () => {
             selfieImage ? 'border-green-300 bg-green-50/50' : 'border-gray-300 hover:border-purple-400 bg-gray-50/50'
           ]">
 
-            <!-- Empty State - Upload Button -->
-            <div v-if="!selfieImage" class="space-y-2">
+            <!-- Empty State - Upload/Capture Buttons -->
+            <div v-if="!selfieImage" class="space-y-4">
               <div class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg class="w-8 h-8 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </div>
-              <div>
-                <div class="flex justify-center mt-4">
-                  <button
-                    @click="triggerFileInput"
-                    :disabled="isLoading"
-                    class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-                  >
-                    <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    Upload Photo
-                  </button>
-                </div>
+              <div class="flex flex-col space-y-3 items-center">
+                <button
+                  @click="triggerFileInput"
+                  :disabled="isLoading"
+                  class="w-48 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Upload Photo
+                </button>
+                <div class="text-xs text-gray-500">or</div>
+                <button
+                  @click="takePhoto"
+                  :disabled="isLoading"
+                  class="w-48 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                >
+                  <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Take Selfie
+                </button>
               </div>
             </div>
 
@@ -148,9 +313,6 @@ const validateSelfie = async () => {
                 </div>
               </div>
               <div class="flex justify-center space-x-3">
-                <button @click="triggerFileInput" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-gray-300">
-                  Change Photo
-                </button>
                 <button @click="removeImage" class="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium py-2 px-4 rounded-lg transition-colors border-1 border-red-150">
                   Remove
                 </button>
@@ -228,6 +390,78 @@ const validateSelfie = async () => {
 
       <!-- Hidden canvas for camera capture -->
       <canvas ref="canvasElement" class="hidden"></canvas>
+    </div>
+  </div>
+
+  <!-- Camera Modal for Selfie -->
+  <div v-if="cameraModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <!-- Header -->
+      <div class="flex justify-between items-center p-4 border-b">
+        <h3 class="text-md font-semibold text-gray-800">
+          Capture your full face
+        </h3>
+        <button @click="closeCamera" class="text-gray-500 hover:text-gray-700 p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Camera View -->
+      <div class="relative bg-black aspect-[4/3]">
+        <video
+          ref="videoElement"
+          autoplay
+          playsinline
+          muted
+          class="w-full h-full object-cover"
+        ></video>
+
+        <!-- Loading overlay -->
+        <div v-if="videoLoading" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div class="text-white text-center">
+            <svg class="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm">Starting camera...</p>
+          </div>
+        </div>
+
+        <!-- Camera overlay for better composition -->
+        <div class="absolute inset-0 border-2 border-white rounded-lg m-4 pointer-events-none">
+          <div class="w-full h-full border-2 border-white rounded-lg"></div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="p-4 flex justify-center space-x-4 text-sm">
+        <button @click="closeCamera" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition-colors">
+          Cancel
+        </button>
+        <button
+          @click="capturePhoto"
+          :disabled="videoLoading || !!cameraError"
+          :class="[
+            'px-6 py-2 rounded-lg font-medium transition-all shadow-lg hover:shadow-xl',
+            (videoLoading || !!cameraError)
+              ? 'bg-gray-400 cursor-not-allowed text-gray-600'
+              : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+          ]"
+        >
+          <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          {{ videoLoading ? 'Loading...' : 'Capture' }}
+        </button>
+      </div>
+
+      <!-- Error Message -->
+      <div v-if="cameraError" class="p-4 bg-red-50 border-t">
+        <p class="text-sm text-red-600 text-center">{{ cameraError }}</p>
+      </div>
     </div>
   </div>
 </template>
